@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="20dp"
+    android:background="#FFF3E0">
+
+    <Button
+        android:id="@+id/btnLogOut"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Đăng xuất"
+        android:backgroundTint="#757575"
+        android:layout_gravity="end"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="ORDER MÓN THEO BÀN"
+        android:textSize="22sp"
+        android:textStyle="bold"
+        android:textColor="#E65100"
+        android:layout_gravity="center"
+        android:layout_marginBottom="20dp"/>
+
+    <EditText
+        android:id="@+id/edtSoBan"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Số bàn (Ví dụ: Bàn 05)"
+        android:inputType="text"
+        android:padding="15dp"
+        android:background="@android:drawable/editbox_background"
+        android:layout_marginBottom="15dp"
+        android:textStyle="bold"
+        android:textColor="#C62828"/>
+
+    <Spinner
+        android:id="@+id/spnMenu"
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:background="@android:drawable/btn_dropdown"
+        android:layout_marginBottom="15dp" />
+
+    <EditText
+        android:id="@+id/edtSoLuong"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Số lượng (Ví dụ: 2)"
+        android:inputType="number"
+        android:padding="15dp"
+        android:background="@android:drawable/editbox_background"
+        android:layout_marginBottom="20dp"
+        android:text="1"
+        android:textStyle="bold"/>
+
+    <Button
+        android:id="@+id/btnGuiOrder"
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:text="GỬI VÀO BẾP"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:backgroundTint="#EF6C00"/>
+
+</LinearLayout>

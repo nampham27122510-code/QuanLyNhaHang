@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="QUẢN LÝ KHO VẬT LIỆU"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:layout_gravity="center"
+        android:layout_marginBottom="20dp"/>
+
+    <EditText
+        android:id="@+id/edtTenVatLieu"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Tên vật liệu (vd: Thịt bò)"/>
+
+    <EditText
+        android:id="@+id/edtSoLuong"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Số lượng (kg/g/cái)"
+        android:inputType="numberDecimal"/>
+
+    <Button
+        android:id="@+id/btnCapNhatKho"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Cập nhật vào kho"
+        android:backgroundTint="#EF6C00"
+        android:layout_marginTop="10dp"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Tồn kho hiện tại:"
+        android:layout_marginTop="20dp"
+        android:textStyle="italic"/>
+
+    <TextView
+        android:id="@+id/txtDanhSachKho"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Đang tải dữ liệu..."
+        android:padding="10dp"
+        android:background="#E0E0E0"
+        android:layout_marginTop="10dp"/>
+</LinearLayout>

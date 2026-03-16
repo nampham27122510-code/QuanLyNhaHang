@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:background="#E8F5E9"> <TextView
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:text="DANH SÁCH MÓN ĐANG ĐỢI"
+    android:textSize="22sp"
+    android:textStyle="bold"
+    android:textColor="#2E7D32"
+    android:layout_gravity="center"
+    android:layout_marginBottom="20dp"/>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:background="@android:color/white"
+        android:padding="10dp">
+
+        <TextView
+            android:id="@+id/txtDanhSachOrder"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Đang đợi đơn hàng mới..."
+            android:textSize="18sp"
+            android:lineSpacingExtra="8dp"
+            android:textColor="#333333"/>
+    </ScrollView>
+
+    <Button
+        android:id="@+id/btnXoaHet"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="ĐÃ XỬ LÝ XONG TẤT CẢ"
+        android:backgroundTint="#C62828"
+        android:layout_marginTop="10dp"/>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="10dp"
+        android:layout_marginBottom="10dp">
+
+        <EditText
+            android:id="@+id/edtBanHoanThanh"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:hint="Nhập số bàn xong món"
+            android:inputType="text"
+            android:padding="12dp"
+            android:background="@android:drawable/editbox_background"/>
+
+        <Button
+            android:id="@+id/btnHoanThanhBan"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="XONG"
+            android:backgroundTint="#2E7D32"
+            android:layout_marginStart="5dp"/>
+    </LinearLayout>
+</LinearLayout>

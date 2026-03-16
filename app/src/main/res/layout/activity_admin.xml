@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="20dp"
+    android:background="#F0F2F5">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="QUẢN TRỊ HỆ THỐNG"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        android:textColor="#1A237E"
+        android:layout_gravity="center"
+        android:layout_marginBottom="30dp"/>
+
+    <Button
+        android:id="@+id/btnDoanhThuThang"
+        android:layout_width="match_parent"
+        android:layout_height="80dp"
+        android:text="Doanh thu trong tháng"
+        android:textSize="18sp"
+        android:backgroundTint="#2E7D32"
+        android:layout_marginBottom="15dp"
+        android:drawableLeft="@android:drawable/ic_menu_my_calendar"
+        android:paddingLeft="20dp"/>
+
+    <Button
+        android:id="@+id/btnDonHangNgay"
+        android:layout_width="match_parent"
+        android:layout_height="80dp"
+        android:text="Đơn hàng &amp; Doanh thu ngày"
+        android:textSize="18sp"
+        android:backgroundTint="#1565C0"
+        android:layout_marginBottom="15dp"
+        android:drawableLeft="@android:drawable/ic_menu_day"
+        android:paddingLeft="20dp"/>
+
+    <Button
+        android:id="@+id/btnQuanLyKho"
+        android:layout_width="match_parent"
+        android:layout_height="80dp"
+        android:text="Quản lý kho (Xuất/Nhập)"
+        android:textSize="18sp"
+        android:backgroundTint="#EF6C00"
+        android:layout_marginBottom="15dp"
+        android:drawableLeft="@android:drawable/ic_dialog_info"
+        android:paddingLeft="20dp"/>
+
+    <Button
+        android:id="@+id/btnQuanLyMenu"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="CÀI ĐẶT THỰC ĐƠN (MENU)"
+        android:backgroundTint="#1976D2"
+        android:layout_marginTop="10dp"
+        android:drawableLeft="@android:drawable/ic_menu_edit"
+        android:padding="10dp"/>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Hệ thống PVN - Admin Mode"
+        android:gravity="center"
+        android:layout_marginTop="20dp"
+        android:textColor="#9E9E9E"/>
+
+</LinearLayout>

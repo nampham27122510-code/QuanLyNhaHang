@@ -1,0 +1,51 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="20dp"
+    android:background="#E3F2FD">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="THÊM MÓN VÀO THỰC ĐƠN"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:layout_gravity="center"
+        android:layout_marginBottom="20dp"/>
+
+    <EditText
+        android:id="@+id/edtTenMonMoi"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Tên món (vd: Phở Gà)"/>
+
+    <EditText
+        android:id="@+id/edtGiaMon"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Giá bán (vd: 45000)"
+        android:inputType="number"/>
+
+    <EditText
+        android:id="@+id/edtIdKho"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Tên nguyên liệu trong kho (vd: Thit_Ga)"/>
+
+    <EditText
+        android:id="@+id/edtDinhMuc"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Định mức trừ (vd: 0.15)"
+        android:inputType="numberDecimal"/>
+
+    <Button
+        android:id="@+id/btnLuuMenu"
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:text="LƯU VÀO MENU"
+        android:layout_marginTop="20dp"
+        android:backgroundTint="#1976D2"/>
+
+</LinearLayout>
