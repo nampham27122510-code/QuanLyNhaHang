@@ -170,4 +170,4 @@ class Bep : AppCompatActivity() {
         super.onDestroy()
         mediaPlayer?.release()
     }
-}git init
+}
