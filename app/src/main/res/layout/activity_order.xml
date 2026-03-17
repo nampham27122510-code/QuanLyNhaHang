@@ -1,67 +1,77 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.drawerlayout.widget.DrawerLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/drawer_layout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="20dp"
-    android:background="#FFF3E0">
+    tools:context=".Order">
 
-    <Button
-        android:id="@+id/btnLogOut"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Đăng xuất"
-        android:backgroundTint="#757575"
-        android:layout_gravity="end"/>
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="ORDER MÓN THEO BÀN"
-        android:textSize="22sp"
-        android:textStyle="bold"
-        android:textColor="#E65100"
-        android:layout_gravity="center"
-        android:layout_marginBottom="20dp"/>
-
-    <EditText
-        android:id="@+id/edtSoBan"
+    <RelativeLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:hint="Số bàn (Ví dụ: Bàn 05)"
-        android:inputType="text"
-        android:padding="15dp"
-        android:background="@android:drawable/editbox_background"
-        android:layout_marginBottom="15dp"
-        android:textStyle="bold"
-        android:textColor="#C62828"/>
+        android:layout_height="match_parent"
+        android:background="#F8F9FB">
 
-    <Spinner
-        android:id="@+id/spnMenu"
-        android:layout_width="match_parent"
-        android:layout_height="60dp"
-        android:background="@android:drawable/btn_dropdown"
-        android:layout_marginBottom="15dp" />
+        <LinearLayout
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="60dp"
+            android:background="#FFFFFF"
+            android:elevation="4dp"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="16dp">
 
-    <EditText
-        android:id="@+id/edtSoLuong"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:hint="Số lượng (Ví dụ: 2)"
-        android:inputType="number"
-        android:padding="15dp"
-        android:background="@android:drawable/editbox_background"
-        android:layout_marginBottom="20dp"
-        android:text="1"
-        android:textStyle="bold"/>
+            <ImageButton
+                android:id="@+id/btnOpenMenu"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/_que"
+                app:tint="#F28931"
+                android:contentDescription="Menu" />
 
-    <Button
-        android:id="@+id/btnGuiOrder"
-        android:layout_width="match_parent"
-        android:layout_height="60dp"
-        android:text="GỬI VÀO BẾP"
-        android:textSize="18sp"
-        android:textStyle="bold"
-        android:backgroundTint="#EF6C00"/>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:text="Thực đơn PointSell"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:textColor="#1E1E1E" />
+        </LinearLayout>
 
-</LinearLayout>
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvFood"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_below="@id/toolbar"
+            android:padding="8dp"
+            android:paddingBottom="100dp"
+            android:clipToPadding="false"/>
+
+        <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+            android:id="@+id/btnViewCart"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentBottom="true"
+            android:layout_centerHorizontal="true"
+            android:layout_marginBottom="24dp"
+            android:text="Giỏ hàng (0)"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold"
+            app:icon="@drawable/giohang"
+            app:iconTint="#FFFFFF"
+            app:iconPadding="10dp"
+            app:backgroundTint="#F28931" />
+    </RelativeLayout>
+
+    <com.google.android.material.navigation.NavigationView
+        android:id="@+id/nav_view"
+        android:layout_width="280dp"
+        android:layout_height="match_parent"
+        android:layout_gravity="start"
+        app:itemIconTint="#F28931"
+        app:menu="@menu/customer_menu" />
+
+</androidx.drawerlayout.widget.DrawerLayout>
