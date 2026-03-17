@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="20dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="THÔNG TIN ĐẶT MÓN"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:textColor="#F28931"
+        android:layout_gravity="center"
+        android:layout_marginBottom="20dp"/>
+
+    <EditText
+        android:id="@+id/edtDialogName"
+        android:layout_width="match_parent"
+        android:layout_height="55dp"
+        android:hint="Tên khách hàng"
+        android:padding="12dp"
+        android:background="@android:drawable/editbox_background"/>
+
+    <EditText
+        android:id="@+id/edtDialogPhone"
+        android:layout_width="match_parent"
+        android:layout_height="55dp"
+        android:hint="Số điện thoại"
+        android:layout_marginTop="12dp"
+        android:padding="12dp"
+        android:inputType="phone"
+        android:background="@android:drawable/editbox_background"/>
+
+    <EditText
+        android:id="@+id/edtDialogTable"
+        android:layout_width="match_parent"
+        android:layout_height="55dp"
+        android:hint="Số bàn (Bắt buộc)"
+        android:layout_marginTop="12dp"
+        android:padding="12dp"
+        android:inputType="number"
+        android:background="@android:drawable/editbox_background"/>
+
+    <EditText
+        android:id="@+id/edtDialogNote"
+        android:layout_width="match_parent"
+        android:layout_height="55dp"
+        android:hint="Ghi chú thêm"
+        android:layout_marginTop="12dp"
+        android:padding="12dp"
+        android:background="@android:drawable/editbox_background"/>
+</LinearLayout>
