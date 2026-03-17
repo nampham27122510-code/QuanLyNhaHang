@@ -9,6 +9,12 @@
         android:label="@string/app_name"
         android:theme="@style/Theme.QuanLyNhaHang">
         <activity
+            android:name=".GiaoMonAdapter"
+            android:exported="false" />
+        <activity
+            android:name=".nhanvien"
+            android:exported="false" />
+        <activity
             android:name=".dialog_user_info"
             android:exported="false" />
         <activity

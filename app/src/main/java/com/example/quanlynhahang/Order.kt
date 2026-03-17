@@ -29,18 +29,19 @@ class Order : AppCompatActivity() {
     private var tableNumber = ""
     private var customerNote = ""
 
+    private var lastTotalAmount = 0L
+    private val DB_URL = "https://hethongnhahang-91d27-default-rtdb.asia-southeast1.firebasedatabase.app"
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_order)
 
-        // 1. Ánh xạ View
         drawerLayout = findViewById(R.id.drawer_layout)
         btnViewCart = findViewById(R.id.btnViewCart)
         val btnOpenMenu = findViewById<ImageButton>(R.id.btnOpenMenu)
         val rvFood = findViewById<RecyclerView>(R.id.rvFood)
         val navView = findViewById<NavigationView>(R.id.nav_view)
 
-        // 2. Cấu hình RecyclerView - Phải làm trước khi nạp data
         rvFood.layoutManager = GridLayoutManager(this, 2)
         foodAdapter = FoodAdapter(foodList) {
             cartList.add(it)
@@ -48,33 +49,31 @@ class Order : AppCompatActivity() {
         }
         rvFood.adapter = foodAdapter
 
-        // 3. Kết nối Firebase tải Menu
-        val database = FirebaseDatabase.getInstance("https://hethongnhahang-91d27-default-rtdb.asia-southeast1.firebasedatabase.app")
+        val database = FirebaseDatabase.getInstance(DB_URL)
         val menuRef = database.getReference("Menu")
 
         menuRef.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                foodList.clear() // Xóa danh sách cũ tránh trùng lặp
+                foodList.clear()
                 if (snapshot.exists()) {
                     for (ds in snapshot.children) {
                         foodList.add(ds)
                     }
                 }
-                foodAdapter.notifyDataSetChanged() // Ép giao diện hiển thị món ngay
+                foodAdapter.notifyDataSetChanged()
             }
             override fun onCancelled(error: DatabaseError) {
                 Toast.makeText(this@Order, "Lỗi kết nối: ${error.message}", Toast.LENGTH_SHORT).show()
             }
         })
 
-        // 4. Sidebar
         btnOpenMenu.setOnClickListener { drawerLayout.openDrawer(GravityCompat.START) }
         navView.setNavigationItemSelectedListener { item ->
             when (item.itemId) {
                 R.id.nav_payment -> showPaymentDialog()
-                R.id.nav_service -> Toast.makeText(this, "Đã gọi phục vụ!", Toast.LENGTH_SHORT).show()
+                R.id.nav_service -> Toast.makeText(this@Order, "Đã gọi phục vụ!", Toast.LENGTH_SHORT).show()
                 R.id.nav_login -> {
-                    startActivity(Intent(this, MainActivity::class.java))
+                    startActivity(Intent(this@Order, MainActivity::class.java))
                     finish()
                 }
             }
@@ -82,10 +81,9 @@ class Order : AppCompatActivity() {
             true
         }
 
-        // 5. Nút Giỏ hàng
         btnViewCart.setOnClickListener {
             if (cartList.isEmpty()) {
-                Toast.makeText(this, "Chưa chọn món nào!", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@Order, "Chưa chọn món nào!", Toast.LENGTH_SHORT).show()
             } else if (tableNumber.isEmpty()) {
                 showUserInfoDialog()
             } else {
@@ -101,7 +99,7 @@ class Order : AppCompatActivity() {
         val edtTable = view.findViewById<EditText>(R.id.edtDialogTable)
         val edtNote = view.findViewById<EditText>(R.id.edtDialogNote)
 
-        AlertDialog.Builder(this)
+        AlertDialog.Builder(this@Order) // Chống văng
             .setView(view)
             .setCancelable(false)
             .setPositiveButton("ĐẶT MÓN") { _, _ ->
@@ -112,7 +110,7 @@ class Order : AppCompatActivity() {
 
                 if (tableNumber.isNotEmpty()) confirmAndOrder()
                 else {
-                    Toast.makeText(this, "Bắt buộc nhập số bàn!", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@Order, "Bắt buộc nhập số bàn!", Toast.LENGTH_SHORT).show()
                     showUserInfoDialog()
                 }
             }
@@ -121,42 +119,107 @@ class Order : AppCompatActivity() {
     }
 
     private fun confirmAndOrder() {
-        val orderRef = FirebaseDatabase.getInstance().getReference("Orders")
+        val database = FirebaseDatabase.getInstance(DB_URL)
+        val orderRef = database.getReference("Orders")
         val ts = System.currentTimeMillis()
+
+        lastTotalAmount = 0L
         for (item in cartList) {
+            val giaRaw = item.child("gia").value.toString()
+            val giaMon = giaRaw.replace(Regex("[^0-9]"), "").toLongOrNull() ?: 0L
+            lastTotalAmount += giaMon
+
             val data = HashMap<String, Any?>()
             data["tenKH"] = customerName
             data["sdt"] = customerPhone
             data["soBan"] = tableNumber
             data["tenMon"] = item.key
-            data["gia"] = item.child("gia").value
+            data["gia"] = giaMon
             data["status"] = "waiting"
             data["timestamp"] = ts
             data["ghiChu"] = customerNote
+
             orderRef.push().setValue(data)
         }
 
-        cartList.clear() // Reset giỏ hàng
+        cartList.clear()
         btnViewCart.text = "Giỏ hàng (0)"
-        Toast.makeText(this, "Đơn hàng bàn $tableNumber đã gửi đi!", Toast.LENGTH_LONG).show()
+        Toast.makeText(this@Order, "Đơn hàng bàn $tableNumber đã gửi đi!", Toast.LENGTH_LONG).show()
     }
 
     private fun showPaymentDialog() {
+        // Tính tổng tiền dựa trên giỏ hàng hoặc đơn vừa đặt gần nhất
         var total = 0L
-        for (i in cartList) total += i.child("gia").value.toString().toLongOrNull() ?: 0L
+        if (cartList.isNotEmpty()) {
+            for (i in cartList) {
+                val giaRaw = i.child("gia").value.toString()
+                total += giaRaw.replace(Regex("[^0-9]"), "").toLongOrNull() ?: 0L
+            }
+        } else {
+            total = lastTotalAmount
+        }
+
+        // Nếu chưa có món nào và cũng chưa đặt đơn nào thì không cho thanh toán
+        if (total == 0L) {
+            Toast.makeText(this@Order, "Chưa có hóa đơn cần thanh toán!", Toast.LENGTH_SHORT).show()
+            return
+        }
 
         val view = LayoutInflater.from(this).inflate(R.layout.dialog_payment, null)
         view.findViewById<TextView>(R.id.tvTotalPayment).text = "${String.format("%,d", total)} VNĐ"
 
-        val dialog = AlertDialog.Builder(this).setView(view).create()
+        val dialog = AlertDialog.Builder(this@Order).setView(view).create()
+
+        // --- NÚT CHUYỂN KHOẢN ---
         view.findViewById<Button>(R.id.btnTransfer).setOnClickListener {
-            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://qr.napas.com.vn/pay")))
-            dialog.dismiss()
+            if (tableNumber.isNotEmpty()) {
+                val database = FirebaseDatabase.getInstance(DB_URL)
+                val notiRef = database.getReference("Notifications")
+
+                val notiData = HashMap<String, Any>()
+                notiData["message"] = "Bàn số $tableNumber đã chuyển khoản, vui lòng chụp bill và xác nhận"
+                notiData["table"] = tableNumber
+                notiData["timestamp"] = System.currentTimeMillis()
+
+                notiRef.setValue(notiData).addOnSuccessListener {
+                    AlertDialog.Builder(this@Order)
+                        .setTitle("Thông báo")
+                        .setMessage("Đã gửi yêu cầu thanh toán chuyển khoản cho bàn $tableNumber. Vui lòng chuẩn bị sẵn hình ảnh xác nhận.")
+                        .setPositiveButton("Đồng ý", null)
+                        .show()
+                }.addOnFailureListener {
+                    Toast.makeText(this@Order, "Lỗi kết nối: ${it.message}", Toast.LENGTH_SHORT).show()
+                }
+                dialog.dismiss()
+            } else {
+                Toast.makeText(this@Order, "Vui lòng 'Đặt món' trước để có số bàn!", Toast.LENGTH_LONG).show()
+                dialog.dismiss()
+                showUserInfoDialog() // Bắt nhập thông tin bàn nếu chưa có
+            }
         }
+
+        // --- NÚT TIỀN MẶT ---
         view.findViewById<Button>(R.id.btnCash).setOnClickListener {
-            Toast.makeText(this, "Thanh toán tại quầy - Bàn $tableNumber", Toast.LENGTH_LONG).show()
-            dialog.dismiss()
+            if (tableNumber.isNotEmpty()) {
+                val database = FirebaseDatabase.getInstance(DB_URL)
+                val notiRef = database.getReference("Notifications")
+
+                val notiData = HashMap<String, Any>()
+                notiData["message"] = "Vui lòng ra bàn $tableNumber thanh toán"
+                notiData["table"] = tableNumber
+                notiData["timestamp"] = System.currentTimeMillis()
+
+                notiRef.setValue(notiData).addOnSuccessListener {
+                    Toast.makeText(this@Order, "Đã gửi yêu cầu cho nhân viên!", Toast.LENGTH_LONG).show()
+                }
+                dialog.dismiss()
+            } else {
+                Toast.makeText(this@Order, "Vui lòng 'Đặt món' trước để có số bàn!", Toast.LENGTH_LONG).show()
+                dialog.dismiss()
+                showUserInfoDialog()
+            }
         }
+
         dialog.show()
     }
 }

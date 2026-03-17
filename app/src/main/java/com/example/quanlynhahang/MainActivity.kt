@@ -31,26 +31,30 @@ class MainActivity : AppCompatActivity() {
                 // 1. Tài khoản ADMIN
                 user == "admin" && pass == "123" -> {
                     Toast.makeText(this, "Chào mừng Admin!", Toast.LENGTH_SHORT).show()
-                    // Sau này chuyển tới màn hình Quản lý tổng quát
                     startActivity(Intent(this, Admin::class.java))
-                    startActivity(intent)
-                    finish()
+                    finish() // Đóng màn hình đăng nhập
                 }
 
                 // 2. Tài khoản BẾP
                 user == "bep1" && pass == "123" -> {
                     Toast.makeText(this, "Đã đăng nhập vào hệ thống Bếp!", Toast.LENGTH_SHORT).show()
-                    // Sau này chuyển tới màn hình Xem danh sách Order (Đầu bếp)
-                    // startActivity(Intent(this, BepActivity::class.java))
-                    Toast.makeText(this, "Chào bếp trưởng!", Toast.LENGTH_SHORT).show()
                     startActivity(Intent(this, Bep::class.java))
+                    finish()
                 }
 
-                // 3. Tài khoản NHÂN VIÊN (ORDER)
-                user == "nhanvien1" && pass == "123" -> {
-                    Toast.makeText(this, "Đã đăng nhập vào hệ thống Order!", Toast.LENGTH_SHORT).show()
-                    // Chuyển tới màn hình nhập món ăn (màn hình Hadilao lúc nãy)
-                     startActivity(Intent(this, Order::class.java))
+                // 3. Tài khoản KHÁCH HÀNG (Dùng để gọi món tại bàn)
+                user == "khach" && pass == "123" -> {
+                    Toast.makeText(this, "Chào mừng quý khách!", Toast.LENGTH_SHORT).show()
+                    startActivity(Intent(this, Order::class.java))
+                    finish()
+                }
+
+                // 4. CẬP NHẬT: Tài khoản NHÂN VIÊN TIẾP TÂN (Xử lý thanh toán)
+                user == "phucvu" && pass == "123" -> {
+                    Toast.makeText(this, "Đã đăng nhập hệ thống Phục vụ!", Toast.LENGTH_SHORT).show()
+                    // Chuyển tới màn hình Trạm tiếp tân vừa mới tạo
+                    startActivity(Intent(this, nhanvien::class.java))
+                    finish()
                 }
 
                 else -> {
