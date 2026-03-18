@@ -4,27 +4,39 @@ import android.media.MediaPlayer
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.widget.Button
-import android.widget.EditText
-import android.widget.TextView
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.recyclerview.widget.DefaultItemAnimator
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.google.firebase.database.*
-import java.util.*
+
+// Data class dùng chung
+data class GroupedItem(
+    val soBan: String,
+    val tenMon: String,
+    val soLuong: Int,
+    val timestamp: Long,
+    val snapshots: List<DataSnapshot>
+)
 
 class Bep : AppCompatActivity() {
 
     private var mediaPlayer: MediaPlayer? = null
     private var currentOrderCount = -1
     private lateinit var database: DatabaseReference
+    private val displayOrders = mutableListOf<GroupedItem>()
+    private lateinit var bepAdapter: BepAdapter
 
     private val DB_URL = "https://hethongnhahang-91d27-default-rtdb.asia-southeast1.firebasedatabase.app"
 
-    private val updateHandler = Handler(Looper.getMainLooper())
-    private val updateRunnable = object : Runnable {
+    private val timerHandler = Handler(Looper.getMainLooper())
+    private val timerRunnable = object : Runnable {
         override fun run() {
-            taiDuLieuHoaDon()
-            updateHandler.postDelayed(this, 60000)
+            if (::bepAdapter.isInitialized && displayOrders.isNotEmpty()) {
+                // Cập nhật thời gian mà không làm treo UI
+                bepAdapter.notifyItemRangeChanged(0, displayOrders.size, "UPDATE_TIME")
+            }
+            timerHandler.postDelayed(this, 1000)
         }
     }
 
@@ -32,83 +44,50 @@ class Bep : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_bep)
 
-        val edtBanHoanThanh = findViewById<EditText>(R.id.edtBanHoanThanh)
-        val btnHoanThanhBan = findViewById<Button>(R.id.btnHoanThanhBan)
+        val rv = findViewById<RecyclerView>(R.id.rvDanhSachMon)
+        rv.layoutManager = LinearLayoutManager(this)
 
-        // Kết nối Firebase vào nhánh Orders
-        database = FirebaseDatabase.getInstance(DB_URL).getReference("Orders")
-
-        taiDuLieuHoaDon()
-        updateHandler.post(updateRunnable)
-
-        // --- BẾP ẤN HOÀN THÀNH THEO SỐ BÀN ---
-        btnHoanThanhBan.setOnClickListener {
-            val banNhap = edtBanHoanThanh.text.toString().trim()
-            if (banNhap.isNotEmpty()) {
-                xửLyXongMonTaiBep(banNhap)
-                edtBanHoanThanh.text.clear()
-            } else {
-                Toast.makeText(this, "Vui lòng nhập số bàn!", Toast.LENGTH_SHORT).show()
-            }
+        // Cấu hình Animator: Chìa khóa để các thẻ dưới trôi lên mượt
+        rv.itemAnimator = DefaultItemAnimator().apply {
+            removeDuration = 300
+            moveDuration = 300
         }
+
+        bepAdapter = BepAdapter(displayOrders)
+        rv.adapter = bepAdapter
+
+        database = FirebaseDatabase.getInstance(DB_URL).getReference("Orders")
+        taiDuLieuHoaDon()
+        timerHandler.post(timerRunnable)
     }
 
     private fun taiDuLieuHoaDon() {
-        val txtDanhSach = findViewById<TextView>(R.id.txtDanhSachOrder)
-
-        // Chỉ hiển thị các món đang chờ nấu (status = waiting)
         database.orderByChild("status").equalTo("waiting")
             .addValueEventListener(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
-                    var orderMoi = ""
-                    var count = 0
-                    val currentTime = System.currentTimeMillis()
+                    val rawList = mutableListOf<DataSnapshot>()
+                    for (ds in snapshot.children) rawList.add(ds)
 
-                    for (ds in snapshot.children) {
-                        count++
-                        val ban = ds.child("soBan").value.toString()
-                        val mon = ds.child("tenMon").value.toString()
-                        val ts = ds.child("timestamp").value.toString().toLongOrNull() ?: currentTime
+                    val groups = rawList.groupBy { "${it.child("soBan").value}_${it.child("tenMon").value}" }
 
-                        val phutTroiQua = (currentTime - ts) / 60000
-                        val canhBaoTre = if (phutTroiQua >= 10) "⚠️ [TRỄ ${phutTroiQua}P] " else ""
+                    val newList = mutableListOf<GroupedItem>()
+                    for ((_, items) in groups) {
+                        val first = items[0]
+                        val minTs = items.minOfOrNull { it.child("timestamp").value.toString().toLongOrNull() ?: System.currentTimeMillis() } ?: System.currentTimeMillis()
+                        newList.add(GroupedItem(first.child("soBan").value.toString(), first.child("tenMon").value.toString(), items.size, minTs, items))
+                    }
+                    newList.sortBy { it.timestamp }
 
-                        orderMoi += "$count. $canhBaoTre[BÀN: $ban] -> $mon\n-----------------\n"
+                    // CHỐNG KHỰNG: Chỉ cập nhật khi có món mới vào.
+                    // Khi nấu xong, Adapter đã tự xóa rồi nên không cần nạp lại ở đây.
+                    if (newList.size > displayOrders.size || displayOrders.isEmpty() || newList.isEmpty()) {
+                        displayOrders.clear()
+                        displayOrders.addAll(newList)
+                        bepAdapter.notifyDataSetChanged()
                     }
 
-                    // Phát tiếng chuông khi có món mới
-                    if (count > currentOrderCount && currentOrderCount != -1) {
-                        phatTiengTing()
-                    }
-                    currentOrderCount = count
-                    txtDanhSach.text = if (orderMoi.isEmpty()) "Hiện tại chưa có món nào cần nấu." else orderMoi
-                }
-                override fun onCancelled(error: DatabaseError) {}
-            })
-    }
-
-    private fun xửLyXongMonTaiBep(soBan: String) {
-        // Tìm các món của bàn này đang 'waiting' để chuyển sang 'cooked'
-        database.orderByChild("soBan").equalTo(soBan)
-            .addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    if (snapshot.exists()) {
-                        var check = false
-                        for (ds in snapshot.children) {
-                            if (ds.child("status").value == "waiting") {
-                                // CHỈ ĐỔI STATUS, KHÔNG XÓA ĐƠN
-                                ds.ref.child("status").setValue("cooked")
-                                check = true
-                            }
-                        }
-                        if (check) {
-                            Toast.makeText(this@Bep, "Đã chuyển đơn bàn $soBan sang chờ giao!", Toast.LENGTH_SHORT).show()
-                        } else {
-                            Toast.makeText(this@Bep, "Bàn $soBan không có món nào đang chờ nấu", Toast.LENGTH_SHORT).show()
-                        }
-                    } else {
-                        Toast.makeText(this@Bep, "Không thấy dữ liệu bàn $soBan", Toast.LENGTH_SHORT).show()
-                    }
+                    if (rawList.size > currentOrderCount && currentOrderCount != -1) phatTiengTing()
+                    currentOrderCount = rawList.size
                 }
                 override fun onCancelled(error: DatabaseError) {}
             })
@@ -119,12 +98,12 @@ class Bep : AppCompatActivity() {
             mediaPlayer?.release()
             mediaPlayer = MediaPlayer.create(this, R.raw.tingting)
             mediaPlayer?.start()
-        } catch (e: Exception) { e.printStackTrace() }
+        } catch (e: Exception) {}
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        updateHandler.removeCallbacks(updateRunnable)
+        timerHandler.removeCallbacks(timerRunnable)
         mediaPlayer?.release()
     }
 }
