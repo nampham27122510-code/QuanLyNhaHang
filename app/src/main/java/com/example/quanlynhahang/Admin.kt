@@ -1,85 +1,141 @@
 package com.example.quanlynhahang
 
-import android.app.AlertDialog
 import android.content.Intent
 import android.os.Bundle
-import android.widget.Button
+import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.cardview.widget.CardView
+import com.github.mikephil.charting.charts.BarChart
+import com.github.mikephil.charting.charts.PieChart
+import com.github.mikephil.charting.data.*
+import com.github.mikephil.charting.utils.ColorTemplate
 import com.google.firebase.database.*
 import java.text.SimpleDateFormat
 import java.util.*
 
 class Admin : AppCompatActivity() {
 
-    // URL Firebase chuẩn của bạn
     private val DB_URL = "https://hethongnhahang-91d27-default-rtdb.asia-southeast1.firebasedatabase.app"
+    private lateinit var barChartTuan: BarChart
+    private lateinit var pieChartMon: PieChart
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_admin)
 
-        val btnDoanhThuThang = findViewById<Button>(R.id.btnDoanhThuThang)
-        val btnDonHangNgay = findViewById<Button>(R.id.btnDonHangNgay)
-        val btnQuanLyKho = findViewById<Button>(R.id.btnQuanLyKho)
-        val btnQuanLyMenu = findViewById<Button>(R.id.btnQuanLyMenu)
+        // 1. Ánh xạ các nút - Đảm bảo ID khớp với activity_admin.xml
+        val cardRevenue = findViewById<CardView>(R.id.cardRevenueThang)
+        val cardKho = findViewById<CardView>(R.id.cardQuanLyKho)
+        val cardMenu = findViewById<CardView>(R.id.cardQuanLyMenu)
+        val cardBaoCao = findViewById<CardView>(R.id.cardBaoCao)
 
-        // Kết nối đến nhánh Revenue (Nơi nhân viên đẩy tiền về)
-        val database = FirebaseDatabase.getInstance(DB_URL).getReference("Revenue")
+        // 2. Ánh xạ biểu đồ (Sửa lại ID không dấu nếu cần)
+        barChartTuan = findViewById(R.id.barChartTuần)
+        pieChartMon = findViewById(R.id.pieChartMonAn)
 
-        // 1. XỬ LÝ DOANH THU THÁNG (Cộng dồn tất cả 'total' của các ngày trong tháng)
-        btnDoanhThuThang.setOnClickListener {
-            val thangNay = SimpleDateFormat("yyyy-MM", Locale.getDefault()).format(Date())
+        val database = FirebaseDatabase.getInstance(DB_URL)
 
-            database.addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    var tongThang = 0L
-                    for (ngay in snapshot.children) {
-                        // Nếu key ngày (yyyy-MM-dd) bắt đầu bằng tháng này (yyyy-MM)
-                        if (ngay.key?.startsWith(thangNay) == true) {
-                            // Lấy giá trị từ nhánh 'total' mà nhân viên đã cộng dồn
-                            val tienNgay = ngay.child("total").value.toString().toLongOrNull() ?: 0L
-                            tongThang += tienNgay
-                        }
-                    }
-                    hienThiDialog("Báo cáo tháng $thangNay",
-                        "Tổng doanh thu tháng: ${String.format("%,d", tongThang)} VNĐ")
-                }
-                override fun onCancelled(error: DatabaseError) {}
-            })
+        cardRevenue.setOnClickListener {
+            hienThiDialog("Thông báo", "Dữ liệu doanh thu đang được cập nhật tự động.")
         }
 
-        // 2. XỬ LÝ DOANH THU NGÀY
-        btnDonHangNgay.setOnClickListener {
-            val homNay = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
-
-            database.child(homNay).addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    // Lấy trực tiếp số tổng mà nhân viên đã xác nhận thu tiền
-                    val tongNgay = snapshot.child("total").value.toString().toLongOrNull() ?: 0L
-
-                    hienThiDialog("Báo cáo ngày $homNay",
-                        "Tổng doanh thu thực thu: ${String.format("%,d", tongNgay)} VNĐ\n\n(Lưu ý: Chỉ tính các đơn nhân viên đã nhấn 'Xác nhận thu tiền')")
-                }
-                override fun onCancelled(error: DatabaseError) {}
-            })
-        }
-
-        // 3. QUẢN LÝ KHO
-        btnQuanLyKho.setOnClickListener {
+        cardKho.setOnClickListener {
+            // Đảm bảo bạn đã tạo file Kho.kt
             startActivity(Intent(this, Kho::class.java))
         }
 
-        // 4. QUẢN LÝ MENU
-        btnQuanLyMenu.setOnClickListener {
+        cardMenu.setOnClickListener {
+            // Đảm bảo bạn đã tạo file QuanLyMenu.kt (hoặc QuanLyMenuActivity)
             startActivity(Intent(this, QuanLyMenu::class.java))
         }
+
+        cardBaoCao.setOnClickListener {
+            // Đảm bảo bạn đã tạo file BaoCao.kt
+            startActivity(Intent(this, BaoCao::class.java))
+        }
+
+        loadBarChartTuan(database.getReference("Revenue"))
+        loadPieChartMonAn(database.getReference("Orders"))
+    }
+
+    private fun loadBarChartTuan(dbRef: DatabaseReference) {
+        val thangNay = SimpleDateFormat("yyyy-MM", Locale.getDefault()).format(Date())
+
+        dbRef.addValueEventListener(object : ValueEventListener { // Dùng addValueEventListener để cập nhật Realtime
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val doanhThuTuan = floatArrayOf(0f, 0f, 0f, 0f)
+
+                for (ngaySnap in snapshot.children) {
+                    val ngayKey = ngaySnap.key ?: ""
+                    if (ngayKey.startsWith(thangNay)) {
+                        // Giả định Key là "2026-03-18" -> lấy "18"
+                        val ngayStr = ngayKey.split("-").last().toIntOrNull() ?: 0
+                        val tien = ngaySnap.child("total").value.toString().toFloatOrNull() ?: 0f
+
+                        when (ngayStr) {
+                            in 1..7 -> doanhThuTuan[0] += tien
+                            in 8..14 -> doanhThuTuan[1] += tien
+                            in 15..21 -> doanhThuTuan[2] += tien
+                            else -> doanhThuTuan[3] += tien
+                        }
+                    }
+                }
+
+                val entries = ArrayList<BarEntry>()
+                for (i in 0..3) {
+                    entries.add(BarEntry((i + 1).toFloat(), doanhThuTuan[i]))
+                }
+
+                val dataSet = BarDataSet(entries, "Doanh thu tuần (VNĐ)")
+                dataSet.colors = ColorTemplate.MATERIAL_COLORS.toList()
+
+                barChartTuan.data = BarData(dataSet)
+                barChartTuan.description.isEnabled = false
+                barChartTuan.animateY(1000)
+                barChartTuan.invalidate()
+            }
+            override fun onCancelled(error: DatabaseError) {}
+        })
+    }
+
+    private fun loadPieChartMonAn(orderRef: DatabaseReference) {
+        orderRef.addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val mapMonAn = HashMap<String, Int>()
+
+                for (ds in snapshot.children) {
+                    val status = ds.child("status").value.toString()
+                    // Lọc những món đã phục vụ hoặc thanh toán
+                    if (status == "cooked" || status == "paid") {
+                        val tenMon = ds.child("tenMon").value.toString()
+                        mapMonAn[tenMon] = (mapMonAn[tenMon] ?: 0) + 1
+                    }
+                }
+
+                val pieEntries = ArrayList<PieEntry>()
+                for ((mon, count) in mapMonAn) {
+                    pieEntries.add(PieEntry(count.toFloat(), mon))
+                }
+
+                val dataSet = PieDataSet(pieEntries, "")
+                dataSet.colors = ColorTemplate.COLORFUL_COLORS.toList()
+                dataSet.valueTextSize = 12f
+
+                pieChartMon.data = PieData(dataSet)
+                pieChartMon.centerText = "Món bán chạy"
+                pieChartMon.animateXY(1000, 1000)
+                pieChartMon.invalidate()
+            }
+            override fun onCancelled(error: DatabaseError) {}
+        })
     }
 
     private fun hienThiDialog(tieuDe: String, noiDung: String) {
-        val builder = AlertDialog.Builder(this)
-        builder.setTitle(tieuDe)
-        builder.setMessage(noiDung)
-        builder.setPositiveButton("Đã hiểu", null)
-        builder.show()
+        AlertDialog.Builder(this)
+            .setTitle(tieuDe)
+            .setMessage(noiDung)
+            .setPositiveButton("Đã hiểu", null)
+            .show()
     }
 }

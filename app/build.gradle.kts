@@ -1,7 +1,7 @@
 plugins {
-    id("com.android.application") // Dùng id thay vì alias để tránh lỗi libs.versions.toml
+    id("com.android.application")
     id("org.jetbrains.kotlin.android")
-    id("com.google.gms.google-services")
+    id("com.google.gms.google-services") // Plugin dành cho Firebase
 }
 
 android {
@@ -14,44 +14,57 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
+
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+
     kotlinOptions {
         jvmTarget = "11"
+    }
+
+    buildFeatures {
+        viewBinding = true // Bật ViewBinding nếu Nam muốn code gọn hơn sau này
     }
 }
 
 dependencies {
-    // Thư viện hệ thống - Ép phiên bản chuẩn
-    implementation("androidx.core:core-ktx:1.13.0")
+    // --- Thư viện Android UI cơ bản ---
+    implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("com.google.android.material:material:1.12.0")
-    implementation("androidx.activity:activity:1.9.3")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
-
-    // THƯ VIỆN SIDEBAR - Khai báo trực tiếp không qua libs.versions.toml
+    implementation("androidx.activity:activity-ktx:1.9.3")
     implementation("androidx.drawerlayout:drawerlayout:1.2.0")
-    implementation("com.google.android.material:material:1.12.0") // NavigationView nằm trong này
 
-    // Firebase (Giữ nguyên cụm BoM của Nam [cite: 9])
-    implementation(platform("com.google.firebase:firebase-bom:32.8.0"))
+    // --- Firebase (Sử dụng BoM để quản lý phiên bản đồng bộ) ---
+    implementation(platform("com.google.firebase:firebase-bom:33.1.0"))
     implementation("com.google.firebase:firebase-database-ktx")
     implementation("com.google.firebase:firebase-analytics-ktx")
+    implementation("com.google.firebase:firebase-auth-ktx") // Thêm để hỗ trợ Login sau này
 
-    // Glide cho mã QR
+    // --- Xử lý hình ảnh (Dùng cho ảnh món ăn & mã QR) ---
     implementation("com.github.bumptech.glide:glide:4.16.0")
+    annotationProcessor("com.github.bumptech.glide:compiler:4.16.0")
 
+    // --- Biểu đồ (Dùng cho Admin.kt) ---
+    implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
+
+    // --- Unit Testing ---
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")

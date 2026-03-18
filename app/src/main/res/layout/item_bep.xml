@@ -1,37 +1,59 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:id="@+id/cardMonAn"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_margin="12dp"
-    app:cardCornerRadius="18dp"
-    app:cardElevation="8dp"
-    app:cardBackgroundColor="@android:color/white">
+    android:layout_margin="10dp"
+    app:cardCornerRadius="15dp"
+    app:cardElevation="6dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="22dp">
+        android:orientation="horizontal"
+        android:padding="20dp"
+        android:gravity="center_vertical">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+            <TextView
+                android:id="@+id/tvSoBanBep"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="BÀN: --"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:textColor="#212121"/>
+            <TextView
+                android:id="@+id/tvThoiGianCho"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0p"
+                android:textColor="#F44336"
+                android:textStyle="bold" />
+        </LinearLayout>
 
         <TextView
-            android:id="@+id/tvNoiDungMon"
-            android:layout_width="match_parent"
+            android:id="@+id/tvTenMonBep"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:text="[BÀN 1] Phở Bò x1"
+            android:layout_weight="2"
+            android:text="Tên món"
             android:textSize="20sp"
             android:textStyle="bold"
-            android:textColor="#212121"/>
+            android:textColor="#F28931"
+            android:gravity="center"/>
 
         <TextView
-            android:id="@+id/tvThoiGian"
-            android:layout_width="match_parent"
+            android:id="@+id/tvSoLuongBep"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="00:00"
-            android:textColor="#757575"
-            android:textSize="16sp"
-            android:layout_marginTop="10dp"/>
-
+            android:text="x1"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:textColor="#2E7D32" />
     </LinearLayout>
 </androidx.cardview.widget.CardView>
