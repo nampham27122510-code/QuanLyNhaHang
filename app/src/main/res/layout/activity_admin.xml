@@ -1,70 +1,113 @@
-<?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="20dp"
     android:background="#F0F2F5">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="QUẢN TRỊ HỆ THỐNG"
-        android:textSize="24sp"
-        android:textStyle="bold"
-        android:textColor="#1A237E"
-        android:layout_gravity="center"
-        android:layout_marginBottom="30dp"/>
-
-    <Button
-        android:id="@+id/btnDoanhThuThang"
-        android:layout_width="match_parent"
-        android:layout_height="80dp"
-        android:text="Doanh thu trong tháng"
-        android:textSize="18sp"
-        android:backgroundTint="#2E7D32"
-        android:layout_marginBottom="15dp"
-        android:drawableLeft="@android:drawable/ic_menu_my_calendar"
-        android:paddingLeft="20dp"/>
-
-    <Button
-        android:id="@+id/btnDonHangNgay"
-        android:layout_width="match_parent"
-        android:layout_height="80dp"
-        android:text="Đơn hàng &amp; Doanh thu ngày"
-        android:textSize="18sp"
-        android:backgroundTint="#1565C0"
-        android:layout_marginBottom="15dp"
-        android:drawableLeft="@android:drawable/ic_menu_day"
-        android:paddingLeft="20dp"/>
-
-    <Button
-        android:id="@+id/btnQuanLyKho"
-        android:layout_width="match_parent"
-        android:layout_height="80dp"
-        android:text="Quản lý kho (Xuất/Nhập)"
-        android:textSize="18sp"
-        android:backgroundTint="#EF6C00"
-        android:layout_marginBottom="15dp"
-        android:drawableLeft="@android:drawable/ic_dialog_info"
-        android:paddingLeft="20dp"/>
-
-    <Button
-        android:id="@+id/btnQuanLyMenu"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="CÀI ĐẶT THỰC ĐƠN (MENU)"
-        android:backgroundTint="#1976D2"
-        android:layout_marginTop="10dp"
-        android:drawableLeft="@android:drawable/ic_menu_edit"
-        android:padding="10dp"/>
+        android:orientation="vertical"
+        android:padding="12dp">
 
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Hệ thống PVN - Admin Mode"
-        android:gravity="center"
-        android:layout_marginTop="20dp"
-        android:textColor="#9E9E9E"/>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="BẢNG ĐIỀU KHIỂN ADMIN"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:textColor="#1A237E"
+            android:layout_gravity="center"
+            android:layout_marginBottom="16dp"/>
 
-</LinearLayout>
+        <GridLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:columnCount="2"
+            android:alignmentMode="alignMargins">
+
+            <androidx.cardview.widget.CardView
+                android:id="@+id/cardRevenueThang"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_columnWeight="1"
+                android:layout_margin="5dp"
+                app:cardCornerRadius="10dp">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="15dp" android:gravity="center">
+                    <ImageView android:layout_width="35dp" android:layout_height="35dp" android:src="@drawable/booking"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Doanh thu" android:textSize="12sp"/>
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <androidx.cardview.widget.CardView
+                android:id="@+id/cardQuanLyKho"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_columnWeight="1"
+                android:layout_margin="5dp"
+                app:cardCornerRadius="10dp">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="15dp" android:gravity="center">
+                    <ImageView android:layout_width="35dp" android:layout_height="35dp" android:src="@drawable/home"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Kho hàng" android:textSize="12sp"/>
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <androidx.cardview.widget.CardView
+                android:id="@+id/cardQuanLyMenu"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_columnWeight="1"
+                android:layout_margin="5dp"
+                app:cardCornerRadius="10dp">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="15dp" android:gravity="center">
+                    <ImageView android:layout_width="35dp" android:layout_height="35dp" android:src="@drawable/menu"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Thực đơn" android:textSize="12sp"/>
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <androidx.cardview.widget.CardView
+                android:id="@+id/cardBaoCao"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_columnWeight="1"
+                android:layout_margin="5dp"
+                app:cardCornerRadius="10dp">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="15dp" android:gravity="center">
+                    <ImageView android:layout_width="35dp" android:layout_height="35dp" android:src="@drawable/luachon"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Báo cáo" android:textSize="12sp"/>
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+        </GridLayout>
+
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="15dp"
+            app:cardCornerRadius="12dp">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="10dp">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Doanh thu theo Tuần (VNĐ)" android:textStyle="bold" android:textColor="#2E7D32"/>
+                <com.github.mikephil.charting.charts.BarChart
+                    android:id="@+id/barChartTuần"
+                    android:layout_width="match_parent"
+                    android:layout_height="250dp" />
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="15dp"
+            android:layout_marginBottom="20dp"
+            app:cardCornerRadius="12dp">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="10dp">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Tỉ lệ món ăn được gọi hôm nay" android:textStyle="bold" android:textColor="#E65100"/>
+                <com.github.mikephil.charting.charts.PieChart
+                    android:id="@+id/pieChartMonAn"
+                    android:layout_width="match_parent"
+                    android:layout_height="300dp" />
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+    </LinearLayout>
+</ScrollView>

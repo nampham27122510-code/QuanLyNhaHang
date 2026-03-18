@@ -22,15 +22,19 @@ class Kho : AppCompatActivity() {
 
         btnCapNhat.setOnClickListener {
             val ten = edtTen.text.toString().trim()
-            val sl = edtSoLuong.text.toString().trim()
+            // SỬA: Ép kiểu sang Double để Firebase hiểu đây là con số (Number)
+            val slStr = edtSoLuong.text.toString().trim()
+            val slValue = slStr.toDoubleOrNull() ?: 0.0
 
-            if (ten.isNotEmpty() && sl.isNotEmpty()) {
-                // Lưu vào Firebase: Tên vật liệu làm Key, Số lượng làm Value
-                database.child(ten).setValue(sl).addOnSuccessListener {
-                    Toast.makeText(this, "Đã cập nhật $ten", Toast.LENGTH_SHORT).show()
+            if (ten.isNotEmpty() && slStr.isNotEmpty()) {
+                // SỬA: Gửi slValue (Double) thay vì sl (String)
+                database.child(ten).setValue(slValue).addOnSuccessListener {
+                    Toast.makeText(this, "Đã cập nhật $ten: $slValue", Toast.LENGTH_SHORT).show()
                     edtTen.text.clear()
                     edtSoLuong.text.clear()
                 }
+            } else {
+                Toast.makeText(this, "Vui lòng nhập đủ tên và số lượng!", Toast.LENGTH_SHORT).show()
             }
         }
 
@@ -39,7 +43,9 @@ class Kho : AppCompatActivity() {
             override fun onDataChange(snapshot: com.google.firebase.database.DataSnapshot) {
                 var hienThi = ""
                 for (item in snapshot.children) {
-                    hienThi += "${item.key}: ${item.value}\n"
+                    // Hiển thị kèm đơn vị hoặc định dạng số cho đẹp
+                    val value = item.value
+                    hienThi += "• ${item.key}: $value\n"
                 }
                 txtDanhSach.text = if (hienThi.isEmpty()) "Kho trống" else hienThi
             }

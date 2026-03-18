@@ -9,6 +9,8 @@ import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.google.firebase.database.DataSnapshot
+import java.text.Normalizer
+import java.util.regex.Pattern
 
 class FoodAdapter(
     private val foodList: List<DataSnapshot>,
@@ -31,41 +33,43 @@ class FoodAdapter(
         val monAn = foodList[position]
         val context = holder.itemView.context
 
-        // 1. Hiển thị tên món ăn từ Firebase
-        holder.tvFoodName.text = monAn.key.toString()
+        // 1. Lấy tên món ăn (Key trên Firebase)
+        val tenMon = monAn.key.toString()
+        holder.tvFoodName.text = tenMon
 
-        // 2. Định dạng giá tiền (ví dụ: 55,000 VNĐ cho Sandwich)
+        // 2. Định dạng giá tiền
         val gia = monAn.child("gia").value.toString()
         holder.tvFoodPrice.text = String.format("%,d VNĐ", gia.toLongOrNull() ?: 0L)
 
-        // 3. LOGIC XỬ LÝ ẢNH TỪ DRAWABLE
-        // Lấy giá trị từ field "imageName" trên Firebase.
-        // LƯU Ý: Firebase nên để là "sandwich", "pho_bo", "pho_ga" (không kèm đuôi .jpg)
-        val rawImageName = monAn.child("imageName").value?.toString() ?: ""
+        // 3. LOGIC LẤY ẢNH TỰ ĐỘNG THEO TÊN MÓN
+        // Chuyển "Bánh mì" -> "banh_mi", "Sandwich" -> "sandwich"
+        val fileName = removeAccent(tenMon.lowercase().trim()).replace(" ", "_")
 
-        // Chuẩn hóa: viết thường, xóa khoảng trắng thừa
-        val cleanedName = rawImageName.lowercase().trim()
-
-        // Tìm ID tài nguyên trong thư mục drawable
-        val imageResId = context.resources.getIdentifier(cleanedName, "drawable", context.packageName)
+        // Tìm ID trong drawable
+        val imageResId = context.resources.getIdentifier(fileName, "drawable", context.packageName)
 
         if (imageResId != 0) {
-            // Nếu tìm thấy ID hợp lệ, nạp ảnh bằng Glide
             Glide.with(context)
                 .load(imageResId)
                 .placeholder(android.R.drawable.ic_menu_gallery)
                 .error(android.R.drawable.ic_menu_report_image)
                 .into(holder.imgFood)
         } else {
-            // Nếu không tìm thấy (do sai tên trên Firebase), hiện ảnh mặc định
+            // Nếu không tìm thấy file trùng tên món, hiện ảnh mặc định
             holder.imgFood.setImageResource(android.R.drawable.ic_menu_gallery)
         }
 
-        // 4. Xử lý sự kiện thêm vào giỏ hàng
         holder.btnAddToCart.setOnClickListener {
             onAddClick(monAn)
         }
     }
 
     override fun getItemCount(): Int = foodList.size
+
+    // Hàm bổ trợ: Chuyển tiếng Việt có dấu thành không dấu để khớp với tên file drawable
+    private fun removeAccent(s: String): String {
+        val temp = Normalizer.normalize(s, Normalizer.Form.NFD)
+        val pattern = Pattern.compile("\\p{InCombiningDiacriticalMarks}+")
+        return pattern.matcher(temp).replaceAll("").replace('đ', 'd').replace('Đ', 'D')
+    }
 }

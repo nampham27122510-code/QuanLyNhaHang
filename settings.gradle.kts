@@ -16,9 +16,11 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+
+        // THÊM DÒNG NÀY ĐỂ TẢI THƯ VIỆN BIỂU ĐỒ
+        maven { url = uri("https://jitpack.io") }
     }
 }
 
 rootProject.name = "QuanLyNhaHang"
 include(":app")
- 

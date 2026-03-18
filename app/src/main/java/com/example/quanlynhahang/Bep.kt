@@ -41,7 +41,6 @@ class Bep : AppCompatActivity() {
         taiDuLieuHoaDon()
         updateHandler.post(updateRunnable)
 
-        // --- BẾP ẤN HOÀN THÀNH THEO SỐ BÀN ---
         btnHoanThanhBan.setOnClickListener {
             val banNhap = edtBanHoanThanh.text.toString().trim()
             if (banNhap.isNotEmpty()) {
@@ -56,7 +55,6 @@ class Bep : AppCompatActivity() {
     private fun taiDuLieuHoaDon() {
         val txtDanhSach = findViewById<TextView>(R.id.txtDanhSachOrder)
 
-        // Chỉ hiển thị các món đang chờ nấu (status = waiting)
         database.orderByChild("status").equalTo("waiting")
             .addValueEventListener(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
@@ -76,7 +74,6 @@ class Bep : AppCompatActivity() {
                         orderMoi += "$count. $canhBaoTre[BÀN: $ban] -> $mon\n-----------------\n"
                     }
 
-                    // Phát tiếng chuông khi có món mới
                     if (count > currentOrderCount && currentOrderCount != -1) {
                         phatTiengTing()
                     }
@@ -88,7 +85,9 @@ class Bep : AppCompatActivity() {
     }
 
     private fun xửLyXongMonTaiBep(soBan: String) {
-        // Tìm các món của bàn này đang 'waiting' để chuyển sang 'cooked'
+        val menuRef = FirebaseDatabase.getInstance(DB_URL).getReference("Menu")
+        val warehouseRef = FirebaseDatabase.getInstance(DB_URL).getReference("Warehouse")
+
         database.orderByChild("soBan").equalTo(soBan)
             .addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
@@ -96,18 +95,41 @@ class Bep : AppCompatActivity() {
                         var check = false
                         for (ds in snapshot.children) {
                             if (ds.child("status").value == "waiting") {
-                                // CHỈ ĐỔI STATUS, KHÔNG XÓA ĐƠN
+                                val tenMon = ds.child("tenMon").value.toString()
+
+                                // 1. Lấy thông tin định mức và mã kho từ Menu
+                                menuRef.child(tenMon).addListenerForSingleValueEvent(object : ValueEventListener {
+                                    override fun onDataChange(menuSnap: DataSnapshot) {
+                                        val idKho = menuSnap.child("idKho").value.toString()
+                                        val dinhMuc = menuSnap.child("dinhMuc").value.toString().toDoubleOrNull() ?: 0.0
+
+                                        // 2. Tiến hành trừ kho bằng Transaction để đảm bảo tính chính xác
+                                        if (idKho.isNotEmpty()) {
+                                            warehouseRef.child(idKho).runTransaction(object : Transaction.Handler {
+                                                override fun doTransaction(mutableData: MutableData): Transaction.Result {
+                                                    // Đọc số lượng hiện tại (ép kiểu Double)
+                                                    val currentSl = mutableData.getValue(Double::class.java) ?: 0.0
+                                                    // Trừ kho
+                                                    mutableData.value = currentSl - dinhMuc
+                                                    return Transaction.success(mutableData)
+                                                }
+                                                override fun onComplete(a: DatabaseError?, b: Boolean, c: DataSnapshot?) {}
+                                            })
+                                        }
+                                    }
+                                    override fun onCancelled(error: DatabaseError) {}
+                                })
+
+                                // 3. Đổi trạng thái sang 'cooked'
                                 ds.ref.child("status").setValue("cooked")
                                 check = true
                             }
                         }
                         if (check) {
-                            Toast.makeText(this@Bep, "Đã chuyển đơn bàn $soBan sang chờ giao!", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(this@Bep, "Đã xong món & trừ kho bàn $soBan!", Toast.LENGTH_SHORT).show()
                         } else {
-                            Toast.makeText(this@Bep, "Bàn $soBan không có món nào đang chờ nấu", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(this@Bep, "Bàn $soBan không có món đang chờ", Toast.LENGTH_SHORT).show()
                         }
-                    } else {
-                        Toast.makeText(this@Bep, "Không thấy dữ liệu bàn $soBan", Toast.LENGTH_SHORT).show()
                     }
                 }
                 override fun onCancelled(error: DatabaseError) {}

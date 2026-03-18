@@ -99,7 +99,7 @@ class Order : AppCompatActivity() {
         val edtTable = view.findViewById<EditText>(R.id.edtDialogTable)
         val edtNote = view.findViewById<EditText>(R.id.edtDialogNote)
 
-        AlertDialog.Builder(this@Order) // Chống văng
+        AlertDialog.Builder(this@Order)
             .setView(view)
             .setCancelable(false)
             .setPositiveButton("ĐẶT MÓN") { _, _ ->
@@ -118,37 +118,62 @@ class Order : AppCompatActivity() {
             .show()
     }
 
+    // --- HÀM XỬ LÝ ĐẶT MÓN & KIỂM TRA KHO (ĐÃ SỬA LỖI TRIM VÀ ÉP KIỂU) ---
     private fun confirmAndOrder() {
         val database = FirebaseDatabase.getInstance(DB_URL)
         val orderRef = database.getReference("Orders")
+        val warehouseRef = database.getReference("Warehouse")
         val ts = System.currentTimeMillis()
 
         lastTotalAmount = 0L
+
         for (item in cartList) {
-            val giaRaw = item.child("gia").value.toString()
-            val giaMon = giaRaw.replace(Regex("[^0-9]"), "").toLongOrNull() ?: 0L
-            lastTotalAmount += giaMon
+            val tenMon = item.key.toString()
 
-            val data = HashMap<String, Any?>()
-            data["tenKH"] = customerName
-            data["sdt"] = customerPhone
-            data["soBan"] = tableNumber
-            data["tenMon"] = item.key
-            data["gia"] = giaMon
-            data["status"] = "waiting"
-            data["timestamp"] = ts
-            data["ghiChu"] = customerNote
+            // SỬA: Dùng trim() để xóa dấu cách thừa ở đầu/cuối của idKho
+            val idKho = item.child("idKho").value.toString().trim()
+            val dinhMuc = item.child("dinhMuc").value.toString().toDoubleOrNull() ?: 0.0
+            val giaMon = item.child("gia").value.toString().toLongOrNull() ?: 0L
 
-            orderRef.push().setValue(data)
+            // 1. Kiểm tra số lượng thực tế trong kho
+            warehouseRef.child(idKho).get().addOnSuccessListener { snapshot ->
+                // SỬA: Lấy giá trị dưới dạng String rồi mới chuyển Double để an toàn nhất
+                val tonKhoValue = snapshot.value.toString().toDoubleOrNull() ?: 0.0
+
+                if (tonKhoValue < dinhMuc) {
+                    // 2. Nếu không đủ: Hiện thông báo xin lỗi
+                    AlertDialog.Builder(this@Order)
+                        .setTitle("Thông báo hết món")
+                        .setMessage("Xin lỗi quý khách vì sự bất tiện này, hiện tại món [$tenMon] đã hết, xin vui lòng chọn món khác.")
+                        .setPositiveButton("Đã hiểu", null)
+                        .show()
+                } else {
+                    // 3. Nếu đủ: Đẩy đơn hàng vào Bếp
+                    lastTotalAmount += giaMon
+                    val data = HashMap<String, Any?>()
+                    data["tenKH"] = customerName
+                    data["sdt"] = customerPhone
+                    data["soBan"] = tableNumber
+                    data["tenMon"] = tenMon
+                    data["gia"] = giaMon
+                    data["status"] = "waiting"
+                    data["timestamp"] = ts
+                    data["ghiChu"] = customerNote
+                    data["idKho"] = idKho // Truyền idKho đã trim sang cho Bếp
+
+                    orderRef.push().setValue(data)
+                    Toast.makeText(this@Order, "Đã gửi đơn: $tenMon", Toast.LENGTH_SHORT).show()
+                }
+            }.addOnFailureListener {
+                Toast.makeText(this@Order, "Lỗi kiểm tra kho!", Toast.LENGTH_SHORT).show()
+            }
         }
 
         cartList.clear()
         btnViewCart.text = "Giỏ hàng (0)"
-        Toast.makeText(this@Order, "Đơn hàng bàn $tableNumber đã gửi đi!", Toast.LENGTH_LONG).show()
     }
 
     private fun showPaymentDialog() {
-        // Tính tổng tiền dựa trên giỏ hàng hoặc đơn vừa đặt gần nhất
         var total = 0L
         if (cartList.isNotEmpty()) {
             for (i in cartList) {
@@ -159,7 +184,6 @@ class Order : AppCompatActivity() {
             total = lastTotalAmount
         }
 
-        // Nếu chưa có món nào và cũng chưa đặt đơn nào thì không cho thanh toán
         if (total == 0L) {
             Toast.makeText(this@Order, "Chưa có hóa đơn cần thanh toán!", Toast.LENGTH_SHORT).show()
             return
@@ -170,12 +194,10 @@ class Order : AppCompatActivity() {
 
         val dialog = AlertDialog.Builder(this@Order).setView(view).create()
 
-        // --- NÚT CHUYỂN KHOẢN ---
         view.findViewById<Button>(R.id.btnTransfer).setOnClickListener {
             if (tableNumber.isNotEmpty()) {
                 val database = FirebaseDatabase.getInstance(DB_URL)
                 val notiRef = database.getReference("Notifications")
-
                 val notiData = HashMap<String, Any>()
                 notiData["message"] = "Bàn số $tableNumber đã chuyển khoản, vui lòng chụp bill và xác nhận"
                 notiData["table"] = tableNumber
@@ -184,26 +206,21 @@ class Order : AppCompatActivity() {
                 notiRef.setValue(notiData).addOnSuccessListener {
                     AlertDialog.Builder(this@Order)
                         .setTitle("Thông báo")
-                        .setMessage("Đã gửi yêu cầu thanh toán chuyển khoản cho bàn $tableNumber. Vui lòng chuẩn bị sẵn hình ảnh xác nhận.")
+                        .setMessage("Đã gửi yêu cầu thanh toán chuyển khoản cho bàn $tableNumber.")
                         .setPositiveButton("Đồng ý", null)
                         .show()
-                }.addOnFailureListener {
-                    Toast.makeText(this@Order, "Lỗi kết nối: ${it.message}", Toast.LENGTH_SHORT).show()
                 }
                 dialog.dismiss()
             } else {
-                Toast.makeText(this@Order, "Vui lòng 'Đặt món' trước để có số bàn!", Toast.LENGTH_LONG).show()
+                showUserInfoDialog()
                 dialog.dismiss()
-                showUserInfoDialog() // Bắt nhập thông tin bàn nếu chưa có
             }
         }
 
-        // --- NÚT TIỀN MẶT ---
         view.findViewById<Button>(R.id.btnCash).setOnClickListener {
             if (tableNumber.isNotEmpty()) {
                 val database = FirebaseDatabase.getInstance(DB_URL)
                 val notiRef = database.getReference("Notifications")
-
                 val notiData = HashMap<String, Any>()
                 notiData["message"] = "Vui lòng ra bàn $tableNumber thanh toán"
                 notiData["table"] = tableNumber
@@ -214,12 +231,10 @@ class Order : AppCompatActivity() {
                 }
                 dialog.dismiss()
             } else {
-                Toast.makeText(this@Order, "Vui lòng 'Đặt món' trước để có số bàn!", Toast.LENGTH_LONG).show()
-                dialog.dismiss()
                 showUserInfoDialog()
+                dialog.dismiss()
             }
         }
-
         dialog.show()
     }
 }
