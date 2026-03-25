@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="8dp"
+    app:cardCornerRadius="10dp"
+    app:cardElevation="4dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="12dp"
+        android:background="#E8F5E9">
+
+        <TextView
+            android:id="@+id/tvInfoThanhToan"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Đang tính toán hóa đơn..."
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="#2E7D32"/>
+
+        <Button
+            android:id="@+id/btnXacNhanThanhToan"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end"
+            android:layout_marginTop="8dp"
+            android:backgroundTint="#43A047"
+            android:text="XÁC NHẬN"
+            android:textColor="@android:color/white"/>
+    </LinearLayout>
+</androidx.cardview.widget.CardView>

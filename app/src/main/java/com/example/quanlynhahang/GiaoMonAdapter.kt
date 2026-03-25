@@ -14,9 +14,9 @@ class GiaoMonAdapter(
 ) : RecyclerView.Adapter<GiaoMonAdapter.GiaoViewHolder>() {
 
     class GiaoViewHolder(v: View) : RecyclerView.ViewHolder(v) {
-        val tenMon = v.findViewById<TextView>(R.id.tvTenMonGiao)
-        val soBan = v.findViewById<TextView>(R.id.tvSoBanGiao)
-        val btnGiao = v.findViewById<Button>(R.id.btnXacNhanGiao)
+        val tenMon: TextView = v.findViewById(R.id.tvTenMonGiao)
+        val soBan: TextView = v.findViewById(R.id.tvSoBanGiao)
+        val btnGiao: Button = v.findViewById(R.id.btnXacNhanGiao)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): GiaoViewHolder {
@@ -26,11 +26,16 @@ class GiaoMonAdapter(
 
     override fun onBindViewHolder(holder: GiaoViewHolder, position: Int) {
         val data = list[position]
-        holder.tenMon.text = data.child("tenMon").value.toString()
-        holder.soBan.text = "Bàn: ${data.child("soBan").value.toString()}"
+
+        // Lấy dữ liệu an toàn để tránh null
+        val ten = data.child("tenMon").value?.toString() ?: "Món không tên"
+        val ban = data.child("soBan").value?.toString() ?: "0"
+
+        holder.tenMon.text = ten
+        holder.soBan.text = "Bàn: $ban"
 
         holder.btnGiao.setOnClickListener {
-            onConfirm(data) // Gọi hàm xử lý ngoài Activity nhanvien
+            onConfirm(data) // Gửi snapshot về Activity nhanvien để xử lý thanh toán
         }
     }
 

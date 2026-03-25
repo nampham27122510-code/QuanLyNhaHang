@@ -5,50 +5,45 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import androidx.cardview.widget.CardView
 import androidx.recyclerview.widget.RecyclerView
 
 class BepAdapter(
-    private val list: List<GroupedItem>,
+    private val list: MutableList<GroupedItem>,
     private val onDoneClick: (GroupedItem) -> Unit
 ) : RecyclerView.Adapter<BepAdapter.ViewHolder>() {
 
-    class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-        val tvBan: TextView = view.findViewById(R.id.tvSoBanBep)
-        val tvMon: TextView = view.findViewById(R.id.tvTenMonBep)
-        val tvSl: TextView = view.findViewById(R.id.tvSoLuongBep)
-        val tvTime: TextView = view.findViewById(R.id.tvThoiGianCho)
+    class ViewHolder(v: View) : RecyclerView.ViewHolder(v) {
+        val card: CardView = v.findViewById(R.id.cardMonAn)
+        val tvBan: TextView = v.findViewById(R.id.tvSoBanBep)
+        val tvMon: TextView = v.findViewById(R.id.tvTenMonBep)
+        val tvSl: TextView = v.findViewById(R.id.tvSoLuongBep)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-        val view = LayoutInflater.from(parent.context).inflate(R.layout.item_bep, parent, false)
-        return ViewHolder(view)
+        val v = LayoutInflater.from(parent.context).inflate(R.layout.item_bep, parent, false)
+        return ViewHolder(v)
     }
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val item = list[position]
         holder.tvBan.text = "BÀN: ${item.soBan}"
-        holder.tvMon.text = item.tenMon
         holder.tvSl.text = "x${item.soLuong}"
-        updateTime(holder, item.timestamp)
-        holder.itemView.setOnClickListener { onDoneClick(item) }
-    }
 
-    // ĐẾM GIÂY KHÔNG LAG: Sử dụng Payload
-    override fun onBindViewHolder(holder: ViewHolder, position: Int, payloads: MutableList<Any>) {
-        if (payloads.contains("UPDATE_TIME")) {
-            updateTime(holder, list[position].timestamp)
+        // HIỂN THỊ MÀU THẺ DỰA TRÊN THANH TOÁN
+        if (item.isPaid) {
+            holder.tvMon.text = "${item.tenMon}\n(ĐÃ THANH TOÁN)"
+            holder.card.setCardBackgroundColor(Color.parseColor("#FFF9C4")) // Màu vàng nhạt
+            holder.tvMon.setTextColor(Color.parseColor("#F57F17"))
         } else {
-            super.onBindViewHolder(holder, position, payloads)
+            holder.tvMon.text = item.tenMon
+            holder.card.setCardBackgroundColor(Color.WHITE)
+            holder.tvMon.setTextColor(Color.BLACK)
         }
-    }
 
-    private fun updateTime(holder: ViewHolder, ts: Long) {
-        val totalSec = (System.currentTimeMillis() - ts) / 1000
-        val m = totalSec / 60
-        val s = totalSec % 60
-        holder.tvTime.text = String.format("%02d:%02d", m, s)
-        if (m >= 10) holder.tvTime.setTextColor(Color.RED)
-        else holder.tvTime.setTextColor(Color.parseColor("#4CAF50"))
+        holder.itemView.setOnClickListener {
+            onDoneClick(item)
+        }
     }
 
     override fun getItemCount() = list.size

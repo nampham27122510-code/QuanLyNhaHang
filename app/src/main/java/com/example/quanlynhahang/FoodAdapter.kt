@@ -29,18 +29,30 @@ class FoodAdapter(
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val item = list[position]
-        val tenMon = item.key.toString()
-        val giaMon = item.child("gia").value.toString()
-        val urlAnh = item.child("hinhAnh").value?.toString() ?: "" // Link ảnh từ Firebase
 
-        holder.tvName.text = tenMon
+        // 1. Lấy tên món gốc từ Database (Ví dụ: "Bún Đậu Mắn Tôm")
+        val tenMonGoc = item.key.toString()
+        val giaMon = item.child("gia").value.toString()
+
+        // HIỂN THỊ ĐÚNG TÊN MÓN (Dù database sai chính tả vẫn hiện đúng chữ đó)
+        holder.tvName.text = tenMonGoc
         holder.tvPrice.text = "$giaMon VNĐ"
 
-        // SỬA LỖI HIỂN THỊ ẢNH: Dùng Glide để load ảnh từ link
+        // 2. LOGIC TÌM ẢNH: Chuyển về chữ thường để so sánh từ khóa "bún đậu"
+        val tenMonDeTimAnh = tenMonGoc.lowercase().trim()
+
+        val imageResource = when {
+            // Chỉ cần chứa chữ "bún đậu" là lấy ảnh bún đậu, bất kể là "Mắm" hay "Mắn"
+            tenMonDeTimAnh.contains("bún đậu") -> R.drawable.bun_dau_mam_tom
+            tenMonDeTimAnh.contains("phở bò") -> R.drawable.pho_bo
+            tenMonDeTimAnh.contains("phở gà") -> R.drawable.pho_ga
+            tenMonDeTimAnh.contains("sandwich") -> R.drawable.sandwich
+            else -> R.drawable.logo // Ảnh mặc định nếu không khớp món nào
+        }
+
+        // 3. Load ảnh bằng Glide
         Glide.with(holder.itemView.context)
-            .load(urlAnh)
-            .placeholder(R.drawable.pho_bo) // Hiện ảnh này khi đang tải
-            .error(R.drawable.pho_bo)       // Hiện ảnh này nếu link lỗi
+            .load(imageResource)
             .into(holder.imgFood)
 
         holder.btnAdd.setOnClickListener { onAddClick(item) }
