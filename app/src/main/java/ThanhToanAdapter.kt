@@ -1,5 +1,6 @@
 package com.example.quanlynhahang
 
+import android.graphics.Color
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -26,39 +27,43 @@ class ThanhToanAdapter(
     override fun onBindViewHolder(holder: ThanhToanViewHolder, position: Int) {
         val data = list[position]
         val notiKey = data.key ?: ""
-        // Lấy số bàn từ Notifications (trường 'table')
+
         val tableFromNoti = data.child("table").value?.toString()?.trim() ?: ""
+        val message = data.child("message").value?.toString() ?: "Yêu cầu thanh toán"
+        val method = data.child("method").value?.toString() ?: "Normal"
 
-        holder.tvInfo.text = "💰 BÀN $tableFromNoti: Đang tính..."
+        // HIỂN THỊ NGAY LẬP TỨC: Không đợi tính tiền để tránh lag
+        holder.btnXacNhan.isEnabled = true
+        holder.btnXacNhan.alpha = 1.0f
 
-        if (tableFromNoti.isNotEmpty()) {
-            val orderRef = FirebaseDatabase.getInstance().getReference("Orders")
-            orderRef.addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    var totalAmount = 0L
+        // Chỉ hiển thị Bàn và nội dung yêu cầu (Tiền mặt/Chuyển khoản)
+        holder.tvInfo.text = "💰 BÀN: $tableFromNoti\n📢 $message"
 
-                    for (ds in snapshot.children) {
-                        // KHỚP CHÍNH XÁC VỚI ẢNH DB: trường 'soban' viết thường
-                        val banTrongDB = ds.child("soban").value?.toString()?.trim() ?: ""
+        // Thiết lập màu sắc nút dựa trên phương thức
+        setupButtonUI(holder.btnXacNhan, method)
 
-                        if (banTrongDB == tableFromNoti) {
-                            val status = ds.child("status").value?.toString() ?: ""
-                            if (status != "paid") {
-                                val gia = ds.child("gia").value?.toString()?.toLongOrNull() ?: 0L
-                                totalAmount += gia
-                            }
-                        }
-                    }
+        // SỬA: Khi ấn xác nhận, truyền table và key sang Activity
+        // Activity sẽ tự quét bảng Orders để tính tổng tiền và cộng vào Admin
+        holder.btnXacNhan.setOnClickListener {
+            // Truyền 0L vì Activity sẽ tự tính lại số tiền thực tế từ Database cho chính xác
+            onConfirm(tableFromNoti, 0L, notiKey)
+        }
+    }
 
-                    // Hiển thị tiền và kích hoạt nút bấm ngay lập tức
-                    holder.tvInfo.text = "💰 BÀN $tableFromNoti: $totalAmount VNĐ"
-
-                    holder.btnXacNhan.setOnClickListener {
-                        onConfirm(tableFromNoti, totalAmount, notiKey)
-                    }
-                }
-                override fun onCancelled(error: DatabaseError) {}
-            })
+    private fun setupButtonUI(btn: Button, method: String) {
+        when (method) {
+            "Transfer" -> {
+                btn.setBackgroundColor(Color.parseColor("#1976D2")) // Màu xanh dương
+                btn.text = "XÁC NHẬN CK"
+            }
+            "Cash" -> {
+                btn.setBackgroundColor(Color.parseColor("#388E3C")) // Màu xanh lá
+                btn.text = "THU TIỀN MẶT"
+            }
+            else -> {
+                btn.setBackgroundColor(Color.parseColor("#4CAF50"))
+                btn.text = "XÁC NHẬN"
+            }
         }
     }
 

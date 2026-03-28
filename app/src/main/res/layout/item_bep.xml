@@ -4,57 +4,73 @@
     android:id="@+id/cardMonAn"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_margin="10dp"
-    app:cardCornerRadius="15dp"
-    app:cardElevation="6dp">
+    android:layout_marginHorizontal="12dp"
+    android:layout_marginVertical="6dp"
+    app:cardCornerRadius="12dp"
+    app:cardElevation="4dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:padding="20dp"
-        android:gravity="center_vertical">
+        android:padding="16dp"
+        android:gravity="center_vertical"
+        android:background="?attr/selectableItemBackground">
 
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:orientation="vertical">
+
             <TextView
                 android:id="@+id/tvSoBanBep"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="BÀN: --"
-                android:textSize="18sp"
+                android:text="BÀN: 05"
+                android:textSize="16sp"
                 android:textStyle="bold"
-                android:textColor="#212121"/>
-            <TextView
-                android:id="@+id/tvThoiGianCho"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="0p"
-                android:textColor="#F44336"
-                android:textStyle="bold" />
+                android:textColor="#1A237E"/> <TextView
+            android:id="@+id/tvThoiGianCho"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="⏱ 5p"
+            android:textColor="#D32F2F"
+            android:textSize="14sp"
+            android:textStyle="bold" />
         </LinearLayout>
 
         <TextView
             android:id="@+id/tvTenMonBep"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_weight="2"
-            android:text="Tên món"
-            android:textSize="20sp"
+            android:layout_weight="2.5"
+            android:text="Phở Bò Tái Lăn"
+            android:textSize="18sp"
             android:textStyle="bold"
-            android:textColor="#F28931"
-            android:gravity="center"/>
+            android:textColor="#E65100"
+            android:gravity="center"
+            android:paddingHorizontal="8dp"/>
 
-        <TextView
-            android:id="@+id/tvSoLuongBep"
-            android:layout_width="wrap_content"
+        <LinearLayout
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:text="x1"
-            android:textSize="22sp"
-            android:textStyle="bold"
-            android:textColor="#2E7D32" />
+            android:layout_weight="0.8"
+            android:gravity="end">
+
+            <TextView
+                android:id="@+id/tvSoLuongBep"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="x3"
+                android:textSize="24sp"
+                android:textStyle="bold"
+                android:textColor="#2E7D32"
+                android:background="#E8F5E9"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="4dp"/>
+        </LinearLayout>
+
     </LinearLayout>
 </androidx.cardview.widget.CardView>

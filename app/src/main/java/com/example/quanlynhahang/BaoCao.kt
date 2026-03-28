@@ -17,37 +17,45 @@ class BaoCao : AppCompatActivity() {
         val btnNgay = findViewById<Button>(R.id.btnDoanhThuNgay)
         val btnThang = findViewById<Button>(R.id.btnDoanhThuThang)
 
-        val database = FirebaseDatabase.getInstance().getReference("Revenue").child("Daily")
+        // SỬA: Trỏ thẳng vào "Revenue" vì nhanvien.kt lưu vào Revenue/yyyy-MM-dd/total
+        val database = FirebaseDatabase.getInstance().getReference("Revenue")
 
         // XỬ LÝ XEM THEO NGÀY
         btnNgay.setOnClickListener {
             val homNay = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
-            database.child(homNay).addListenerForSingleValueEvent(object : ValueEventListener {
+
+            database.child(homNay).child("total").addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
-                    var tong = 0L
-                    for (ds in snapshot.children) {
-                        tong += ds.child("tien").value.toString().toLongOrNull() ?: 0L
-                    }
-                    txtKetQua.text = "Doanh thu ngày $homNay:\n\n${tong} VNĐ"
+                    // Lấy giá trị trực tiếp từ node 'total'
+                    val tong = snapshot.getValue(Long::class.java) ?: 0L
+
+                    val formattedPrice = String.format("%,d", tong)
+                    txtKetQua.text = "📅 Doanh thu ngày $homNay:\n\n💰 $formattedPrice VNĐ"
                 }
                 override fun onCancelled(error: DatabaseError) {}
             })
         }
 
-        // XỬ LÝ XEM THEO THÁNG (Duyệt tất cả các ngày trong tháng)
+        // XỬ LÝ XEM THEO THÁNG
         btnThang.setOnClickListener {
             val thangNay = SimpleDateFormat("yyyy-MM", Locale.getDefault()).format(Date())
+
             database.addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     var tongThang = 0L
-                    for (ngay in snapshot.children) {
-                        if (ngay.key?.startsWith(thangNay) == true) {
-                            for (donHang in ngay.children) {
-                                tongThang += donHang.child("tien").value.toString().toLongOrNull() ?: 0L
-                            }
+
+                    // Duyệt qua tất cả các ngày trong node Revenue
+                    for (ngaySnapshot in snapshot.children) {
+                        val keyNgay = ngaySnapshot.key ?: ""
+                        // Kiểm tra nếu ngày đó thuộc tháng hiện tại
+                        if (keyNgay.startsWith(thangNay)) {
+                            val doanhThuNgay = ngaySnapshot.child("total").getValue(Long::class.java) ?: 0L
+                            tongThang += doanhThuNgay
                         }
                     }
-                    txtKetQua.text = "Tổng doanh thu tháng $thangNay:\n\n${tongThang} VNĐ"
+
+                    val formattedPrice = String.format("%,d", tongThang)
+                    txtKetQua.text = "📊 Tổng doanh thu tháng $thangNay:\n\n💰 $formattedPrice VNĐ"
                 }
                 override fun onCancelled(error: DatabaseError) {}
             })

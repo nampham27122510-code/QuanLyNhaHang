@@ -24,10 +24,12 @@ class Bep : AppCompatActivity() {
     private val displayOrders = mutableListOf<GroupedItem>()
     private lateinit var bepAdapter: BepAdapter
 
+    // Sử dụng Handler để tạo vòng lặp cập nhật thời gian mỗi giây
     private val timerHandler = Handler(Looper.getMainLooper())
     private val timerRunnable = object : Runnable {
         override fun run() {
             if (::bepAdapter.isInitialized && displayOrders.isNotEmpty()) {
+                // SỬA: Thông báo cho Adapter cập nhật lại vùng hiển thị thời gian mà không vẽ lại cả item
                 bepAdapter.notifyItemRangeChanged(0, displayOrders.size, "UPDATE_TIME")
             }
             timerHandler.postDelayed(this, 1000)
@@ -40,41 +42,57 @@ class Bep : AppCompatActivity() {
 
         val rv = findViewById<RecyclerView>(R.id.rvDanhSachMon)
         rv.layoutManager = LinearLayoutManager(this)
-        rv.itemAnimator = DefaultItemAnimator().apply { removeDuration = 500; moveDuration = 500 }
+
+        // Hiệu ứng thêm/xóa mượt mà cho danh sách bếp
+        rv.itemAnimator = DefaultItemAnimator().apply {
+            removeDuration = 500
+            moveDuration = 500
+        }
 
         bepAdapter = BepAdapter(displayOrders) { item -> xửLyXongMonTaiBep(item) }
         rv.adapter = bepAdapter
 
         database = FirebaseDatabase.getInstance(DB_URL).getReference("Orders")
         taiDuLieuHoaDon()
+
+        // Bắt đầu chạy đồng hồ đếm giây
         timerHandler.post(timerRunnable)
     }
 
     private fun taiDuLieuHoaDon() {
+        // Chỉ lấy món "waiting" và gộp nhóm theo bàn + tên món
         database.orderByChild("status").equalTo("waiting")
             .addValueEventListener(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     val rawList = mutableListOf<DataSnapshot>()
                     for (ds in snapshot.children) rawList.add(ds)
 
-                    // Gộp theo bàn và tên món
-                    val groups = rawList.groupBy { "${it.child("soBan").value}_${it.child("tenMon").value}" }
+                    // Đồng nhất Key 'soBan' (B hoa)
+                    val groups = rawList.groupBy {
+                        "${it.child("soBan").value?.toString() ?: "0"}_${it.child("tenMon").value?.toString() ?: "NoName"}"
+                    }
+
                     val newList = mutableListOf<GroupedItem>()
 
                     for ((_, items) in groups) {
                         val first = items[0]
                         val ban = first.child("soBan").value?.toString() ?: "0"
-                        val paid = items.any { it.child("isPaid").value == true }
+
+                        // Kiểm tra trạng thái thanh toán đồng bộ
+                        val paid = items.any { it.child("status").value == "paid" }
 
                         newList.add(GroupedItem(
                             ban,
-                            first.child("tenMon").value.toString(),
+                            first.child("tenMon").value?.toString() ?: "Món không tên",
                             items.size,
-                            first.child("timestamp").value?.toString()?.toLongOrNull() ?: 0L,
+                            // Đảm bảo lấy đúng Long để tính toán thời gian
+                            first.child("timestamp").value?.toString()?.toLongOrNull() ?: System.currentTimeMillis(),
                             items,
                             paid
                         ))
                     }
+
+                    // Sắp xếp món cũ lên đầu để ưu tiên nấu trước
                     newList.sortBy { it.timestamp }
 
                     displayOrders.clear()
@@ -86,6 +104,7 @@ class Bep : AppCompatActivity() {
     }
 
     private fun xửLyXongMonTaiBep(item: GroupedItem) {
+        // Chuyển trạng thái sang 'cooked' để biến mất khỏi màn hình bếp và hiện bên phục vụ
         for (ds in item.snapshots) {
             ds.ref.child("status").setValue("cooked")
         }
@@ -93,6 +112,7 @@ class Bep : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        // Quan trọng: Phải dừng Handler khi thoát Activity để tránh tốn pin và lỗi bộ nhớ
         timerHandler.removeCallbacks(timerRunnable)
     }
 }

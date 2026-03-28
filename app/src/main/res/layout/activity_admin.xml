@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <ScrollView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -19,7 +20,39 @@
             android:textStyle="bold"
             android:textColor="#1A237E"
             android:layout_gravity="center"
-            android:layout_marginBottom="16dp"/>
+            android:layout_marginBottom="10dp"/>
+
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="4dp">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="15dp"
+                android:gravity="center"
+                android:background="#E8F5E9">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="TỔNG DOANH THU HÔM NAY"
+                    android:textSize="12sp"
+                    android:textColor="#2E7D32"
+                    android:textStyle="bold"/>
+                <TextView
+                    android:id="@+id/tvTotalRevenueAdmin"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="💰 0 VNĐ"
+                    android:textSize="24sp"
+                    android:textStyle="bold"
+                    android:textColor="#1B5E20"
+                    android:layout_marginTop="5dp"/>
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
 
         <GridLayout
             android:layout_width="match_parent"
@@ -36,7 +69,7 @@
                 app:cardCornerRadius="10dp">
                 <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="15dp" android:gravity="center">
                     <ImageView android:layout_width="35dp" android:layout_height="35dp" android:src="@drawable/booking"/>
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Doanh thu" android:textSize="12sp"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Doanh thu" android:textSize="12sp" android:layout_marginTop="5dp"/>
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
@@ -49,7 +82,7 @@
                 app:cardCornerRadius="10dp">
                 <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="15dp" android:gravity="center">
                     <ImageView android:layout_width="35dp" android:layout_height="35dp" android:src="@drawable/home"/>
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Kho hàng" android:textSize="12sp"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Kho hàng" android:textSize="12sp" android:layout_marginTop="5dp"/>
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
@@ -62,7 +95,7 @@
                 app:cardCornerRadius="10dp">
                 <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="15dp" android:gravity="center">
                     <ImageView android:layout_width="35dp" android:layout_height="35dp" android:src="@drawable/menu"/>
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Thực đơn" android:textSize="12sp"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Thực đơn" android:textSize="12sp" android:layout_marginTop="5dp"/>
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
@@ -75,7 +108,7 @@
                 app:cardCornerRadius="10dp">
                 <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="15dp" android:gravity="center">
                     <ImageView android:layout_width="35dp" android:layout_height="35dp" android:src="@drawable/luachon"/>
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Báo cáo" android:textSize="12sp"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Báo cáo" android:textSize="12sp" android:layout_marginTop="5dp"/>
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
         </GridLayout>
@@ -88,7 +121,7 @@
             <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="10dp">
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Doanh thu theo Tuần (VNĐ)" android:textStyle="bold" android:textColor="#2E7D32"/>
                 <com.github.mikephil.charting.charts.BarChart
-                    android:id="@+id/barChartTuần"
+                    android:id="@+id/barChartTuan"
                     android:layout_width="match_parent"
                     android:layout_height="250dp" />
             </LinearLayout>

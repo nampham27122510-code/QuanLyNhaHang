@@ -39,14 +39,12 @@ class Order : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_order)
 
-        // 1. Ánh xạ View
         drawerLayout = findViewById(R.id.drawer_layout)
         btnViewCart = findViewById(R.id.btnViewCart)
         val btnOpenMenu = findViewById<ImageButton>(R.id.btnOpenMenu)
         val rvFood = findViewById<RecyclerView>(R.id.rvFood)
         val navView = findViewById<NavigationView>(R.id.nav_view)
 
-        // 2. Cấu hình RecyclerView hiển thị món ăn
         rvFood.layoutManager = GridLayoutManager(this, 2)
         foodAdapter = FoodAdapter(foodList) {
             cartList.add(it)
@@ -54,7 +52,6 @@ class Order : AppCompatActivity() {
         }
         rvFood.adapter = foodAdapter
 
-        // 3. Tải dữ liệu Menu từ Firebase
         val database = FirebaseDatabase.getInstance(DB_URL)
         database.getReference("Menu").addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
@@ -65,7 +62,6 @@ class Order : AppCompatActivity() {
             override fun onCancelled(error: DatabaseError) {}
         })
 
-        // 4. Xử lý Menu Sidebar
         btnOpenMenu.setOnClickListener { drawerLayout.openDrawer(GravityCompat.START) }
 
         navView.setNavigationItemSelectedListener { item ->
@@ -73,7 +69,8 @@ class Order : AppCompatActivity() {
                 R.id.nav_payment -> showPaymentDialog()
                 R.id.nav_service -> {
                     if (tableNumber.isNotEmpty()) {
-                        sendNotification("BÀN $tableNumber YÊU CẦU PHỤC VỤ!")
+                        // Gửi thông báo phục vụ thông thường
+                        sendNotification("BÀN $tableNumber YÊU CẦU PHỤC VỤ!", "Service")
                     } else {
                         Toast.makeText(this, "Vui lòng nhập số bàn trước!", Toast.LENGTH_SHORT).show()
                         showUserInfoDialog()
@@ -87,7 +84,6 @@ class Order : AppCompatActivity() {
             true
         }
 
-        // 5. Nút xem giỏ hàng và đặt món
         btnViewCart.setOnClickListener {
             if (cartList.isEmpty()) {
                 Toast.makeText(this, "Giỏ hàng trống!", Toast.LENGTH_SHORT).show()
@@ -98,7 +94,6 @@ class Order : AppCompatActivity() {
             }
         }
 
-        // 6. SỬA LỖI NÚT BACK: Thoát app an toàn
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
@@ -137,13 +132,12 @@ class Order : AppCompatActivity() {
             }.setNegativeButton("Hủy", null).show()
     }
 
-    // Gửi đơn hàng lên Firebase
     private fun confirmAndOrder() {
         val db = FirebaseDatabase.getInstance(DB_URL)
         val orderRef = db.getReference("Orders")
         val warehouseRef = db.getReference("Warehouse")
         val ts = System.currentTimeMillis()
-        var currentOrderTotal = 0L
+        var totalOrderPrice = 0L
 
         for (item in cartList) {
             val tenMon = item.key.toString()
@@ -151,14 +145,15 @@ class Order : AppCompatActivity() {
             val dinhMuc = item.child("dinhMuc").value?.toString()?.toDoubleOrNull() ?: 0.0
             val giaMon = item.child("gia").value.toString().replace(Regex("[^0-9]"), "").toLongOrNull() ?: 0L
 
-            // Kiểm tra kho trước khi đặt
             warehouseRef.child(idKho).get().addOnSuccessListener { snap ->
-                val tonKho = snap.value.toString().toDoubleOrNull() ?: 0.0
-                if (tonKho < dinhMuc) {
-                    Toast.makeText(this, "Món $tenMon đã hết!", Toast.LENGTH_LONG).show()
+                val tonKhoHienTai = snap.value.toString().toDoubleOrNull() ?: 0.0
+
+                if (tonKhoHienTai < dinhMuc) {
+                    Toast.makeText(this, "Món $tenMon đã hết nguyên liệu!", Toast.LENGTH_LONG).show()
                 } else {
-                    currentOrderTotal += giaMon
-                    lastTotalAmount = currentOrderTotal
+                    totalOrderPrice += giaMon
+                    lastTotalAmount = totalOrderPrice
+                    warehouseRef.child(idKho).setValue(tonKhoHienTai - dinhMuc)
 
                     val data = HashMap<String, Any?>()
                     data["tenKH"] = customerName
@@ -166,21 +161,22 @@ class Order : AppCompatActivity() {
                     data["soBan"] = tableNumber
                     data["tenMon"] = tenMon
                     data["gia"] = giaMon
-                    data["status"] = "waiting" // Quan trọng để Bếp nhận
+                    data["status"] = "waiting"
                     data["timestamp"] = ts
                     data["idKho"] = idKho
                     data["dinhMuc"] = dinhMuc
                     data["ghiChu"] = customerNote
+
                     orderRef.push().setValue(data)
                 }
             }
         }
+
         cartList.clear()
         btnViewCart.text = "Giỏ hàng (0)"
         Toast.makeText(this, "Đã gửi đơn bàn $tableNumber!", Toast.LENGTH_SHORT).show()
     }
 
-    // Tính năng Thanh toán lỗi đã sửa
     private fun showPaymentDialog() {
         var total = 0L
         if (cartList.isNotEmpty()) {
@@ -204,23 +200,26 @@ class Order : AppCompatActivity() {
         val dialog = AlertDialog.Builder(this).setView(view).create()
 
         view.findViewById<Button>(R.id.btnTransfer).setOnClickListener {
-            sendNotification("Bàn $tableNumber yêu cầu CHUYỂN KHOẢN: ${tvTotal.text}")
+            // SỬA: Gửi thông báo kèm phương thức Chuyển khoản
+            sendNotification("Bàn $tableNumber yêu cầu CHUYỂN KHOẢN: ${tvTotal.text}", "Transfer")
             dialog.dismiss()
         }
 
         view.findViewById<Button>(R.id.btnCash).setOnClickListener {
-            sendNotification("Bàn $tableNumber yêu cầu TIỀN MẶT: ${tvTotal.text}")
+            // SỬA: Gửi thông báo kèm phương thức Tiền mặt
+            sendNotification("Bàn $tableNumber yêu cầu TIỀN MẶT: ${tvTotal.text}", "Cash")
             dialog.dismiss()
         }
         dialog.show()
     }
 
-    // Gửi thông báo gọi nhân viên/thanh toán
-    private fun sendNotification(msg: String) {
+    // SỬA: Hàm nhận thêm tham số phương thức (paymentMethod)
+    private fun sendNotification(msg: String, paymentMethod: String = "Normal") {
         val ref = FirebaseDatabase.getInstance(DB_URL).getReference("Notifications")
         val data = HashMap<String, Any>()
         data["message"] = msg
         data["table"] = tableNumber
+        data["method"] = paymentMethod // Thêm trường phương thức để bên nhân viên hiển thị icon/màu sắc
         data["timestamp"] = System.currentTimeMillis()
 
         ref.push().setValue(data).addOnSuccessListener {

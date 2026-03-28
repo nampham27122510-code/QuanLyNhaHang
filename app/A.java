@@ -22,8 +22,8 @@ android {
         getByName("release") {
             isMinifyEnabled = false
             setProguardFiles(listOf(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
+                    getDefaultProguardFile("proguard-android-optimize.txt"),
+                    "proguard-rules.pro"
             ))
         }
     }
@@ -42,22 +42,18 @@ android {
     }
 }
 
-// CỰC KỲ QUAN TRỌNG: Khối này sẽ dập tắt 10 lỗi AAR metadata của bạn
+// Khối lệnh ép phiên bản cho file .kts
 configurations.all {
     resolutionStrategy {
         force("androidx.core:core:1.15.0")
         force("androidx.core:core-ktx:1.15.0")
         force("androidx.activity:activity:1.9.3")
         force("androidx.activity:activity-ktx:1.9.3")
-        // Ngăn chặn navigationevent tự nhảy lên bản đòi API 36
-        force("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7")
-        force("androidx.lifecycle:lifecycle-livedata-ktx:2.8.7")
-        force("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
     }
 }
 
 dependencies {
-    // --- Thư viện UI bản ổn định cho API 35 ---
+    // --- Thư viện Android UI ---
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("com.google.android.material:material:1.11.0")
@@ -65,17 +61,22 @@ dependencies {
     implementation("androidx.activity:activity-ktx:1.9.3")
     implementation("androidx.drawerlayout:drawerlayout:1.2.0")
 
-    // --- Firebase (Dùng bản BoM 32.8.0 cực lành) ---
+    // --- Firebase (Dùng BoM bản ổn định) ---
     implementation(platform("com.google.firebase:firebase-bom:32.8.0"))
     implementation("com.google.firebase:firebase-database-ktx")
     implementation("com.google.firebase:firebase-analytics-ktx")
     implementation("com.google.firebase:firebase-auth-ktx")
 
+    // --- Hỗ trợ ViewModel & LiveData ---
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.0")
+    implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.8.0")
+
     // --- Xử lý hình ảnh ---
     implementation("com.github.bumptech.glide:glide:4.16.0")
+    // Với KTS, đôi khi nên dùng kapt hoặc annotationProcessor
     annotationProcessor("com.github.bumptech.glide:compiler:4.16.0")
 
-    // --- Biểu đồ ---
+    // --- Biểu đồ (Cần JitPack trong settings.gradle.kts) ---
     implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
 
     // --- Unit Testing ---
