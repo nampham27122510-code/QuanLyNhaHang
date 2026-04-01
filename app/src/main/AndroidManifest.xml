@@ -15,6 +15,9 @@
             android:name=".SoDoBan"
             android:exported="false" />
         <activity
+            android:name=".NhanVienDashboard"
+            android:exported="false" />
+        <activity
             android:name=".Order"
             android:exported="true">
             <intent-filter>

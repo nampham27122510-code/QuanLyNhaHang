@@ -1,19 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
+
     <item
         android:id="@+id/nav_order"
         android:icon="@android:drawable/ic_menu_edit"
         android:title="Gọi món" />
+
+    <item
+        android:id="@+id/nav_scan_qr"
+        android:icon="@android:drawable/ic_menu_camera"
+        android:title="Quét mã bàn (QR)" />
+
     <item
         android:id="@+id/nav_payment"
         android:icon="@android:drawable/ic_menu_save"
-        android:title="Thanh toán &amp; QR" />
+        android:title="Thanh toán" />
+
     <item
         android:id="@+id/nav_service"
         android:icon="@android:drawable/ic_lock_silent_mode"
         android:title="Gọi phục vụ" />
+
     <item
         android:id="@+id/nav_login"
         android:icon="@android:drawable/ic_lock_lock"
         android:title="Đăng nhập nội bộ" />
+
 </menu>

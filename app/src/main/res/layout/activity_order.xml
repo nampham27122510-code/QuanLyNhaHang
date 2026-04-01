@@ -47,7 +47,6 @@
             android:layout_height="match_parent"
             android:layout_below="@id/toolbar"
             android:padding="8dp"
-            android:paddingBottom="100dp"
             android:clipToPadding="false"/>
 
         <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton

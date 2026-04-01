@@ -57,6 +57,7 @@ configurations.all {
 }
 
 dependencies {
+    implementation("com.journeyapps:zxing-android-embedded:4.3.0")
     // --- Thư viện UI bản ổn định cho API 35 ---
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.appcompat:appcompat:1.6.1")
