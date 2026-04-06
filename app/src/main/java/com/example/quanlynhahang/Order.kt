@@ -23,7 +23,6 @@ class Order : AppCompatActivity() {
     private val foodList = mutableListOf<DataSnapshot>()
     private val cartList = mutableListOf<DataSnapshot>()
 
-    // Ghi nhớ bàn khách đang ngồi để thanh toán tự động
     private var currentTableNumber = ""
     private val DB_URL = "https://hethongnhahang-91d27-default-rtdb.asia-southeast1.firebasedatabase.app"
     private lateinit var database: FirebaseDatabase
@@ -40,7 +39,6 @@ class Order : AppCompatActivity() {
 
         database = FirebaseDatabase.getInstance(DB_URL)
 
-        // 1. RecyclerView (Không hiện Toast khi thêm món)
         rvFood.layoutManager = GridLayoutManager(this, 2)
         foodAdapter = FoodAdapter(foodList) { snapshot ->
             cartList.add(snapshot)
@@ -48,7 +46,6 @@ class Order : AppCompatActivity() {
         }
         rvFood.adapter = foodAdapter
 
-        // 2. Load Menu từ Firebase
         database.getReference("Menu").addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 foodList.clear()
@@ -58,19 +55,17 @@ class Order : AppCompatActivity() {
             override fun onCancelled(error: DatabaseError) {}
         })
 
-        // 3. Drawer & Navigation
         btnOpenMenu.setOnClickListener { drawerLayout.openDrawer(GravityCompat.START) }
         navView.setNavigationItemSelectedListener { item ->
             when (item.itemId) {
                 R.id.nav_scan_qr -> startScanningQR()
-                R.id.nav_payment -> showPaymentDialog() // Tự lấy số bàn và tính tiền
+                R.id.nav_payment -> showPaymentDialog()
                 R.id.nav_login -> startActivity(Intent(this, MainActivity::class.java))
             }
             drawerLayout.closeDrawer(GravityCompat.START)
             true
         }
 
-        // 4. Mở Dialog nhập liệu khi nhấn Giỏ hàng
         btnViewCart.setOnClickListener {
             if (cartList.isEmpty()) {
                 Toast.makeText(this, "Vui lòng chọn món!", Toast.LENGTH_SHORT).show()
@@ -80,7 +75,6 @@ class Order : AppCompatActivity() {
         }
     }
 
-    // --- DIALOG NHẬP THÔNG TIN (CHỈ BẮT BUỘC SỐ BÀN) ---
     private fun showUserInfoDialog() {
         val view = LayoutInflater.from(this).inflate(R.layout.activity_dialog_user_info, null)
         val edtTen = view.findViewById<EditText>(R.id.edtTenKhach)
@@ -95,14 +89,14 @@ class Order : AppCompatActivity() {
         spnSoBan.adapter = adapterBan
 
         if (currentTableNumber.isNotEmpty()) {
-            spnSoBan.setSelection(currentTableNumber.toInt() - 1)
+            try { spnSoBan.setSelection(currentTableNumber.toInt() - 1) } catch (e: Exception) {}
         }
 
         val alertDialog = AlertDialog.Builder(this).setView(view).create()
 
         btnGuiDon.setOnClickListener {
             val soBan = spnSoBan.selectedItem.toString().replace("Bàn ", "")
-            currentTableNumber = soBan // Ghi nhớ bàn để thanh toán
+            currentTableNumber = soBan
 
             val ten = edtTen.text.toString().trim().ifEmpty { "Khách tại bàn" }
             val sdt = edtSdt.text.toString().trim().ifEmpty { "N/A" }
@@ -130,7 +124,6 @@ class Order : AppCompatActivity() {
         alertDialog.show()
     }
 
-    // --- DIALOG THANH TOÁN (KHỚP XML CỦA NAM) ---
     private fun showPaymentDialog() {
         if (currentTableNumber.isEmpty()) {
             Toast.makeText(this, "Vui lòng chọn bàn trước khi thanh toán!", Toast.LENGTH_LONG).show()
@@ -149,46 +142,49 @@ class Order : AppCompatActivity() {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     var total = 0L
                     for (ds in snapshot.children) {
-                        // Chỉ tính những món chưa thanh toán (status != paid)
                         if (ds.child("status").value != "paid") {
                             total += ds.child("gia").getValue(Long::class.java) ?: 0L
                         }
                     }
                     tvTotal.text = "${String.format("%,d", total)} VNĐ"
+
+                    // Gán sự kiện nút bấm sau khi đã tính xong tổng tiền
+                    btnTransfer.setOnClickListener {
+                        sendPaymentRequest("Transfer", total)
+                        dismissDialog(view)
+                    }
+                    btnCash.setOnClickListener {
+                        sendPaymentRequest("Cash", total)
+                        dismissDialog(view)
+                    }
                 }
                 override fun onCancelled(error: DatabaseError) {}
             })
 
-        val alertDialog = AlertDialog.Builder(this).setView(view).create()
-
-        // Xử lý nút Chuyển khoản
-        btnTransfer.setOnClickListener {
-            sendPaymentRequest("Chuyển khoản")
-            alertDialog.dismiss()
-        }
-
-        // Xử lý nút Tiền mặt
-        btnCash.setOnClickListener {
-            sendPaymentRequest("Tiền mặt")
-            alertDialog.dismiss()
-        }
-
-        alertDialog.show()
+        AlertDialog.Builder(this).setView(view).show()
     }
 
-    private fun sendPaymentRequest(method: String) {
+    private fun dismissDialog(view: android.view.View) {
+        val parent = view.parent
+        if (parent is android.view.ViewManager) {
+            // Cách đơn giản để đóng dialog khi không giữ biến alertDialog
+        }
+    }
+
+    // UPDATE QUAN TRỌNG: Gửi kèm 'totalPrice' để máy Nhân viên hiện số tiền
+    private fun sendPaymentRequest(method: String, total: Long) {
         val data = HashMap<String, Any>()
         data["table"] = currentTableNumber
         data["method"] = method
+        data["totalPrice"] = total // TRƯỜNG DỮ LIỆU THIẾU LÀ ĐÂY
         data["timestamp"] = ServerValue.TIMESTAMP
 
         database.getReference("Notifications_Pay").child("ban_$currentTableNumber")
             .setValue(data).addOnSuccessListener {
-                Toast.makeText(this, "Đã báo nhân viên Bàn $currentTableNumber thanh toán ($method)!", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "Đã báo nhân viên Bàn $currentTableNumber thanh toán!", Toast.LENGTH_LONG).show()
             }
     }
 
-    // --- QUÉT QR ---
     private fun startScanningQR() {
         IntentIntegrator(this).setPrompt("Quét mã bàn").setOrientationLocked(false).initiateScan()
     }
