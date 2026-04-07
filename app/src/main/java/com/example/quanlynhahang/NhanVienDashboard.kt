@@ -4,6 +4,7 @@ import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
 import android.os.Bundle
+import android.view.Gravity
 import android.view.View
 import android.widget.*
 import androidx.appcompat.app.AlertDialog
@@ -35,61 +36,115 @@ class NhanVienDashboard : AppCompatActivity() {
         }
     }
 
+    private fun listenTableStatus(card: CardView, tableId: Int) {
+        val imgTable = card.findViewWithTag<ImageView>("img_$tableId")
+        val dotPay = card.findViewWithTag<View>("dotPay_$tableId")   // Chấm đỏ (Thanh toán)
+        val dotDone = card.findViewWithTag<View>("dotDone_$tableId") // Chấm xanh (Giao món)
+
+        // 1. Kiểm tra bàn có khách (Chưa thanh toán) -> Đổi màu nền bàn
+        database.getReference("Orders").addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                var isOccupied = false
+                var hasReadyToDeliver = false
+
+                for (ds in snapshot.children) {
+                    val b = ds.child("soBan").value?.toString() ?: ""
+                    val status = ds.child("status").value?.toString() ?: ""
+
+                    if (b == tableId.toString()) {
+                        if (status != "paid") isOccupied = true
+                        if (status == "done") hasReadyToDeliver = true
+                    }
+                }
+
+                if (isOccupied) {
+                    card.setCardBackgroundColor(Color.parseColor("#FFEBEE")) // Màu hồng nhạt (Có khách)
+                    imgTable.setColorFilter(Color.parseColor("#E53935"))    // Icon đỏ
+                } else {
+                    card.setCardBackgroundColor(Color.WHITE)               // Trống
+                    imgTable.setColorFilter(Color.parseColor("#757575"))    // Icon xám
+                }
+
+                // Hiển thị chấm xanh nếu có món xong từ bếp
+                dotDone.visibility = if (hasReadyToDeliver) View.VISIBLE else View.INVISIBLE
+            }
+            override fun onCancelled(e: DatabaseError) {}
+        })
+
+        // 2. Lắng nghe yêu cầu thanh toán -> Hiện chấm đỏ
+        database.getReference("Notifications_Pay").child("ban_$tableId")
+            .addValueEventListener(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if (snapshot.exists()) {
+                        dotPay.visibility = View.VISIBLE
+                        // Có thể thêm hiệu ứng rung hoặc thông báo ở đây
+                    } else {
+                        dotPay.visibility = View.INVISIBLE
+                    }
+                }
+                override fun onCancelled(error: DatabaseError) {}
+            })
+    }
+
     private fun createTableCard(id: Int): CardView {
         val card = CardView(this)
         val params = GridLayout.LayoutParams()
         params.width = 0
-        params.height = 300
+        params.height = GridLayout.LayoutParams.WRAP_CONTENT
         params.columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f)
         params.setMargins(15, 15, 15, 15)
         card.layoutParams = params
-        card.radius = 45f
-        card.cardElevation = 12f
-        card.setCardBackgroundColor(Color.WHITE)
+        card.radius = 25f
+        card.cardElevation = 8f
+        card.setPadding(10, 20, 10, 20)
 
         val layout = RelativeLayout(this)
-        layout.setPadding(10, 10, 10, 10)
+        layout.setPadding(10, 30, 10, 30)
 
-        // 1. ICON BÀN
+        // Icon bàn
         val imgTable = ImageView(this)
-        imgTable.id = View.generateViewId()
         imgTable.setImageResource(R.drawable.ic_table)
-        imgTable.setColorFilter(Color.parseColor("#757575"))
-
-        val imgParams = RelativeLayout.LayoutParams(150, 150)
-        imgParams.addRule(RelativeLayout.CENTER_IN_PARENT)
+        imgTable.tag = "img_$id"
+        val imgParams = RelativeLayout.LayoutParams(120, 120)
+        imgParams.addRule(RelativeLayout.CENTER_HORIZONTAL)
         imgTable.layoutParams = imgParams
-
-        // 2. CHẤM ĐÈN BÁO
-        val dot = View(this)
-        dot.id = View.generateViewId()
-        val dotParams = RelativeLayout.LayoutParams(40, 40) // Tăng kích thước chấm cho dễ nhìn
-        dotParams.addRule(RelativeLayout.ALIGN_TOP, imgTable.id)
-        dotParams.addRule(RelativeLayout.ALIGN_END, imgTable.id)
-        dot.layoutParams = dotParams
-        dot.setBackgroundResource(R.drawable.dot_shape)
-        dot.visibility = View.INVISIBLE
-
-        // 3. SỐ BÀN
-        val text = TextView(this)
-        text.text = "Bàn $id"
-        text.textSize = 16f
-        text.setTextColor(Color.BLACK)
-        text.setTypeface(null, Typeface.BOLD)
-        val textParams = RelativeLayout.LayoutParams(
-            RelativeLayout.LayoutParams.WRAP_CONTENT,
-            RelativeLayout.LayoutParams.WRAP_CONTENT
-        )
-        textParams.addRule(RelativeLayout.ALIGN_PARENT_BOTTOM)
-        textParams.addRule(RelativeLayout.CENTER_HORIZONTAL)
-        textParams.bottomMargin = 15
-        text.layoutParams = textParams
-
         layout.addView(imgTable)
-        layout.addView(dot)
-        layout.addView(text)
-        card.addView(layout)
 
+        // Tên bàn
+        val tv = TextView(this)
+        tv.text = "Bàn $id"
+        tv.textSize = 16f
+        tv.typeface = Typeface.DEFAULT_BOLD
+        val tvParams = RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.WRAP_CONTENT, RelativeLayout.LayoutParams.WRAP_CONTENT)
+        tvParams.addRule(RelativeLayout.BELOW, imgTable.id)
+        tvParams.addRule(RelativeLayout.CENTER_HORIZONTAL)
+        tvParams.topMargin = 10
+        tv.layoutParams = tvParams
+        layout.addView(tv)
+
+        // CHẤM ĐỎ: Yêu cầu thanh toán (Góc trên bên phải)
+        val dotPay = View(this)
+        dotPay.tag = "dotPay_$id"
+        dotPay.visibility = View.INVISIBLE
+        val dotPayParams = RelativeLayout.LayoutParams(35, 35)
+        dotPayParams.addRule(RelativeLayout.ALIGN_TOP, imgTable.id)
+        dotPayParams.addRule(RelativeLayout.ALIGN_RIGHT, imgTable.id)
+        dotPay.layoutParams = dotPayParams
+        dotPay.background = getDrawable(R.drawable.circle_red)
+        layout.addView(dotPay)
+
+        // CHẤM XANH LÁ: Có món đã làm xong (Góc trên bên trái)
+        val dotDone = View(this)
+        dotDone.tag = "dotDone_$id"
+        dotDone.visibility = View.INVISIBLE
+        val dotDoneParams = RelativeLayout.LayoutParams(35, 35)
+        dotDoneParams.addRule(RelativeLayout.ALIGN_TOP, imgTable.id)
+        dotDoneParams.addRule(RelativeLayout.ALIGN_LEFT, imgTable.id)
+        dotDone.layoutParams = dotDoneParams
+        dotDone.background = getDrawable(R.drawable.circle_green)
+        layout.addView(dotDone)
+
+        card.addView(layout)
         card.setOnClickListener {
             val intent = Intent(this, nhanvien::class.java)
             intent.putExtra("TABLE_ID", id.toString())
@@ -98,63 +153,22 @@ class NhanVienDashboard : AppCompatActivity() {
         return card
     }
 
-    private fun listenTableStatus(card: CardView, id: Int) {
-        val layout = card.getChildAt(0) as RelativeLayout
-        val dot = layout.getChildAt(1)
-        val imgTable = layout.getChildAt(0) as ImageView
-        val tableKey = "ban_$id"
-
-        // Lắng nghe trạng thái Thanh toán (Ưu tiên Đỏ)
-        database.getReference("Notifications_Pay").child(tableKey).addValueEventListener(object : ValueEventListener {
-            override fun onDataChange(s: DataSnapshot) {
-                if (s.exists()) {
-                    dot.visibility = View.VISIBLE
-                    dot.background.setTint(Color.RED)
-                    imgTable.setColorFilter(Color.RED)
-                    card.setCardBackgroundColor(Color.parseColor("#FFF5F5"))
-                } else {
-                    // Nếu không thanh toán thì mới check GỌI (Xanh)
-                    checkCallStatus(tableKey, dot, imgTable, card)
-                }
-            }
-            override fun onCancelled(e: DatabaseError) {}
-        })
-    }
-
-    private fun checkCallStatus(tableKey: String, dot: View, imgTable: ImageView, card: CardView) {
-        database.getReference("Notifications_Call").child(tableKey).addValueEventListener(object : ValueEventListener {
-            override fun onDataChange(s2: DataSnapshot) {
-                if (s2.exists()) {
-                    dot.visibility = View.VISIBLE
-                    dot.background.setTint(Color.BLUE)
-                    imgTable.setColorFilter(Color.BLUE)
-                    card.setCardBackgroundColor(Color.parseColor("#E3F2FD"))
-                } else {
-                    dot.visibility = View.INVISIBLE
-                    imgTable.setColorFilter(Color.parseColor("#757575"))
-                    card.setCardBackgroundColor(Color.WHITE)
-                }
-            }
-            override fun onCancelled(e: DatabaseError) {}
-        })
-    }
-
     private fun setupGlobalCallListener() {
-        // Chỉ hiện thông báo cho các yêu cầu mới chưa xử lý
-        database.getReference("Notifications_Call").addChildEventListener(object : ChildEventListener {
-            override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
-                val tableId = snapshot.child("table").value?.toString() ?: ""
-                if (tableId.isNotEmpty()) {
-                    AlertDialog.Builder(this@NhanVienDashboard)
-                        .setTitle("📢 BÀN $tableId GỌI!")
-                        .setMessage("Khách cần hỗ trợ ngay!")
-                        .setPositiveButton("ĐẾN NGAY") { _, _ -> snapshot.ref.removeValue() }
-                        .setCancelable(false).show()
+        database.getReference("Notifications_Call").addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                if (snapshot.hasChildren()) {
+                    for (ds in snapshot.children) {
+                        val tableId = ds.child("table").value?.toString() ?: ""
+                        if (tableId.isNotEmpty()) {
+                            AlertDialog.Builder(this@NhanVienDashboard)
+                                .setTitle("📢 BÀN $tableId GỌI!")
+                                .setMessage("Khách cần hỗ trợ ngay!")
+                                .setPositiveButton("ĐẾN NGAY") { _, _ -> ds.ref.removeValue() }
+                                .setCancelable(false).show()
+                        }
+                    }
                 }
             }
-            override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {}
-            override fun onChildRemoved(snapshot: DataSnapshot) {}
-            override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {}
             override fun onCancelled(error: DatabaseError) {}
         })
     }
