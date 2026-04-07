@@ -57,7 +57,7 @@ class Bep : AppCompatActivity() {
                 val rawList = mutableListOf<DataSnapshot>()
                 for (ds in snapshot.children) {
                     val status = ds.child("status").value?.toString() ?: ""
-                    // Bếp chỉ hiện món đang chờ nấu (waiting)
+                    // Bếp chỉ hiện món chờ nấu, không quan tâm việc thanh toán
                     if (status == "waiting") {
                         rawList.add(ds)
                     }
@@ -73,7 +73,7 @@ class Bep : AppCompatActivity() {
                 for ((_, items) in groups) {
                     val first = items[0]
                     val ban = first.child("soBan").value?.toString() ?: "0"
-                    val paidStatus = items.any { it.child("isPaid").value == true || it.child("status").value == "paid" }
+                    val paidStatus = items.any { it.child("isPaid").value == true }
 
                     newList.add(GroupedItem(
                         ban,
@@ -96,7 +96,6 @@ class Bep : AppCompatActivity() {
 
     private fun xửLyXongMonTaiBep(item: GroupedItem) {
         for (ds in item.snapshots) {
-            // Chuyển sang cooked để hiện bên Phục vụ
             ds.ref.child("status").setValue("cooked")
         }
     }

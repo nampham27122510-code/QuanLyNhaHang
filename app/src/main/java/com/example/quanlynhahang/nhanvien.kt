@@ -1,7 +1,6 @@
 package com.example.quanlynhahang
 
 import android.os.Bundle
-import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -42,7 +41,7 @@ class nhanvien : AppCompatActivity() {
         rvMonChoGiao = findViewById(R.id.rvMonChoGiao)
         rvMonChoGiao.layoutManager = LinearLayoutManager(this)
         giaoMonAdapter = GiaoMonAdapter(deliveryList) { snapshot ->
-            // Khi nhân viên bấm "Đã giao", món chuyển từ cooked sang delivered
+            // Khi giao xong, chuyển status thành delivered để bàn có thể về màu XÁM
             snapshot.ref.child("status").setValue("delivered")
         }
         rvMonChoGiao.adapter = giaoMonAdapter
@@ -52,7 +51,6 @@ class nhanvien : AppCompatActivity() {
 
     private fun listenData() {
         val tableKey = "ban_$selectedTable"
-
         database.getReference("Notifications_Pay").child(tableKey).addValueEventListener(object : ValueEventListener {
             override fun onDataChange(s: DataSnapshot) {
                 paymentList.clear()
@@ -67,6 +65,7 @@ class nhanvien : AppCompatActivity() {
                 override fun onDataChange(s: DataSnapshot) {
                     deliveryList.clear()
                     for (ds in s.children) {
+                        // Đồng bộ status "cooked" từ bếp
                         if (ds.child("status").value == "cooked") deliveryList.add(ds)
                     }
                     giaoMonAdapter.notifyDataSetChanged()
@@ -84,23 +83,12 @@ class nhanvien : AppCompatActivity() {
         orderRef.orderByChild("soBan").equalTo(table).addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 val updates = hashMapOf<String, Any?>()
-                var hasUnservedItems = false
-
                 for (ds in snapshot.children) {
-                    val status = ds.child("status").value?.toString() ?: ""
-                    // LOGIC MỚI: Chỉ món đã giao (delivered) mới chuyển sang paid
-                    if (status == "delivered") {
-                        updates["${ds.key}/status"] = "paid"
-                    } else if (status == "waiting" || status == "cooked") {
-                        // Nếu còn món đang nấu hoặc chờ, đánh dấu để không dọn bàn
-                        hasUnservedItems = true
-                    }
+                    // Đánh dấu đã trả tiền nhưng giữ nguyên status để nhân viên bưng nốt đồ
+                    updates["${ds.key}/isPaid"] = true
                 }
 
-                if (updates.isEmpty() && !hasUnservedItems) {
-                    Toast.makeText(this@nhanvien, "Không có món nào để thanh toán!", Toast.LENGTH_SHORT).show()
-                    return
-                }
+                if (updates.isEmpty()) return
 
                 orderRef.updateChildren(updates).addOnSuccessListener {
                     revenueRef.runTransaction(object : Transaction.Handler {
@@ -111,12 +99,7 @@ class nhanvien : AppCompatActivity() {
                         }
                         override fun onComplete(e: DatabaseError?, b: Boolean, s: DataSnapshot?) {
                             notifyRef.child("ban_$table").removeValue()
-
-                            if (hasUnservedItems) {
-                                Toast.makeText(this@nhanvien, "Đã thu tiền. Còn món chưa giao, bàn vẫn giữ trạng thái đỏ!", Toast.LENGTH_LONG).show()
-                            } else {
-                                Toast.makeText(this@nhanvien, "Đã thanh toán xong toàn bộ, bàn trống!", Toast.LENGTH_SHORT).show()
-                            }
+                            Toast.makeText(this@nhanvien, "Đã thu tiền Bàn $table!", Toast.LENGTH_SHORT).show()
                             finish()
                         }
                     })

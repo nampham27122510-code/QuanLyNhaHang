@@ -94,6 +94,16 @@ class Order : AppCompatActivity() {
 
         val alertDialog = AlertDialog.Builder(this).setView(view).create()
 
+        // Reset trạng thái bằng cách nhấn giữ nút Gửi đơn
+        btnGuiDon.setOnLongClickListener {
+            val databaseReset = FirebaseDatabase.getInstance(DB_URL).reference
+            databaseReset.child("Orders").removeValue()
+            databaseReset.child("Notifications_Pay").removeValue()
+            Toast.makeText(this, "♻️ ĐÃ RESET TOÀN BỘ TRẠNG THÁI BÀN!", Toast.LENGTH_LONG).show()
+            alertDialog.dismiss()
+            true
+        }
+
         btnGuiDon.setOnClickListener {
             val soBan = spnSoBan.selectedItem.toString().replace("Bàn ", "")
             currentTableNumber = soBan
@@ -112,6 +122,10 @@ class Order : AppCompatActivity() {
                 data["tenMon"] = snapshot.key.toString()
                 data["gia"] = snapshot.child("gia").value.toString().toLongOrNull() ?: 0L
                 data["status"] = "waiting"
+
+                // CẬP NHẬT QUAN TRỌNG: Gửi kèm isPaid để tránh treo đỏ
+                data["isPaid"] = false
+
                 data["timestamp"] = ServerValue.TIMESTAMP
                 orderRef.push().setValue(data)
             }
@@ -136,19 +150,18 @@ class Order : AppCompatActivity() {
         val btnTransfer = view.findViewById<Button>(R.id.btnTransfer)
         val btnCash = view.findViewById<Button>(R.id.btnCash)
 
-        // Tính tổng tiền các món của bàn này từ Firebase
         database.getReference("Orders").orderByChild("soBan").equalTo(currentTableNumber)
             .addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     var total = 0L
                     for (ds in snapshot.children) {
-                        if (ds.child("status").value != "paid") {
+                        // Tính tiền những món chưa thanh toán
+                        if (ds.child("isPaid").value != true) {
                             total += ds.child("gia").getValue(Long::class.java) ?: 0L
                         }
                     }
                     tvTotal.text = "${String.format("%,d", total)} VNĐ"
 
-                    // Gán sự kiện nút bấm sau khi đã tính xong tổng tiền
                     btnTransfer.setOnClickListener {
                         sendPaymentRequest("Transfer", total)
                         dismissDialog(view)
@@ -166,17 +179,14 @@ class Order : AppCompatActivity() {
 
     private fun dismissDialog(view: android.view.View) {
         val parent = view.parent
-        if (parent is android.view.ViewManager) {
-            // Cách đơn giản để đóng dialog khi không giữ biến alertDialog
-        }
+        // Code xử lý đóng dialog
     }
 
-    // UPDATE QUAN TRỌNG: Gửi kèm 'totalPrice' để máy Nhân viên hiện số tiền
     private fun sendPaymentRequest(method: String, total: Long) {
         val data = HashMap<String, Any>()
         data["table"] = currentTableNumber
         data["method"] = method
-        data["totalPrice"] = total // TRƯỜNG DỮ LIỆU THIẾU LÀ ĐÂY
+        data["totalPrice"] = total
         data["timestamp"] = ServerValue.TIMESTAMP
 
         database.getReference("Notifications_Pay").child("ban_$currentTableNumber")
