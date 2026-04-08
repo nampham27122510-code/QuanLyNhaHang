@@ -56,6 +56,15 @@ class Order : AppCompatActivity() {
         })
 
         btnOpenMenu.setOnClickListener { drawerLayout.openDrawer(GravityCompat.START) }
+
+        btnViewCart.setOnClickListener {
+            if (cartList.isEmpty()) {
+                Toast.makeText(this, "Giỏ hàng trống!", Toast.LENGTH_SHORT).show()
+            } else {
+                showCartDetailDialog()
+            }
+        }
+
         navView.setNavigationItemSelectedListener { item ->
             when (item.itemId) {
                 R.id.nav_scan_qr -> startScanningQR()
@@ -65,16 +74,42 @@ class Order : AppCompatActivity() {
             drawerLayout.closeDrawer(GravityCompat.START)
             true
         }
-
-        btnViewCart.setOnClickListener {
-            if (cartList.isEmpty()) {
-                Toast.makeText(this, "Vui lòng chọn món!", Toast.LENGTH_SHORT).show()
-            } else {
-                showUserInfoDialog()
-            }
-        }
     }
 
+    // HIỂN THỊ GIỎ HÀNG VÀ XÓA MÓN (KHÔNG CHỒNG CỬA SỔ)
+    private fun showCartDetailDialog() {
+        val builder = AlertDialog.Builder(this)
+        builder.setTitle("Giỏ hàng (Chạm để xóa)")
+
+        val adapter = ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, mutableListOf())
+        cartList.forEach { adapter.add(it.key.toString()) }
+
+        val listView = ListView(this)
+        listView.adapter = adapter
+
+        builder.setView(listView)
+        builder.setPositiveButton("XÁC NHẬN") { _, _ -> showUserInfoDialog() }
+        builder.setNegativeButton("CHỌN THÊM", null)
+
+        val alertDialog = builder.create()
+
+        listView.setOnItemClickListener { _, _, position, _ ->
+            cartList.removeAt(position)
+            btnViewCart.text = "Giỏ hàng (${cartList.size})"
+
+            if (cartList.isEmpty()) {
+                alertDialog.dismiss()
+                btnViewCart.text = "Giỏ hàng (0)"
+            } else {
+                adapter.clear()
+                cartList.forEach { adapter.add(it.key.toString()) }
+                adapter.notifyDataSetChanged()
+            }
+        }
+        alertDialog.show()
+    }
+
+    // NHẬP THÔNG TIN VÀ GỬI ĐƠN
     private fun showUserInfoDialog() {
         val view = LayoutInflater.from(this).inflate(R.layout.activity_dialog_user_info, null)
         val edtTen = view.findViewById<EditText>(R.id.edtTenKhach)
@@ -94,12 +129,12 @@ class Order : AppCompatActivity() {
 
         val alertDialog = AlertDialog.Builder(this).setView(view).create()
 
-        // Reset trạng thái bằng cách nhấn giữ nút Gửi đơn
+        // Tính năng Reset hệ thống (Nhấn giữ)
         btnGuiDon.setOnLongClickListener {
-            val databaseReset = FirebaseDatabase.getInstance(DB_URL).reference
-            databaseReset.child("Orders").removeValue()
-            databaseReset.child("Notifications_Pay").removeValue()
-            Toast.makeText(this, "♻️ ĐÃ RESET TOÀN BỘ TRẠNG THÁI BÀN!", Toast.LENGTH_LONG).show()
+            val dbReset = FirebaseDatabase.getInstance(DB_URL).reference
+            dbReset.child("Orders").removeValue()
+            dbReset.child("Notifications_Pay").removeValue()
+            Toast.makeText(this, "♻️ HỆ THỐNG ĐÃ RESET!", Toast.LENGTH_SHORT).show()
             alertDialog.dismiss()
             true
         }
@@ -107,30 +142,24 @@ class Order : AppCompatActivity() {
         btnGuiDon.setOnClickListener {
             val soBan = spnSoBan.selectedItem.toString().replace("Bàn ", "")
             currentTableNumber = soBan
-
-            val ten = edtTen.text.toString().trim().ifEmpty { "Khách tại bàn" }
-            val sdt = edtSdt.text.toString().trim().ifEmpty { "N/A" }
             val note = edtGhiChu.text.toString().trim().ifEmpty { "Không có" }
 
             val orderRef = database.getReference("Orders")
             for (snapshot in cartList) {
                 val data = HashMap<String, Any>()
-                data["tenKhach"] = ten
-                data["sdt"] = sdt
+                data["tenKhach"] = edtTen.text.toString().ifEmpty { "Khách" }
+                data["sdt"] = edtSdt.text.toString().ifEmpty { "N/A" }
                 data["ghiChu"] = note
                 data["soBan"] = soBan
                 data["tenMon"] = snapshot.key.toString()
                 data["gia"] = snapshot.child("gia").value.toString().toLongOrNull() ?: 0L
                 data["status"] = "waiting"
-
-                // CẬP NHẬT QUAN TRỌNG: Gửi kèm isPaid để tránh treo đỏ
                 data["isPaid"] = false
-
                 data["timestamp"] = ServerValue.TIMESTAMP
                 orderRef.push().setValue(data)
             }
 
-            Toast.makeText(this, "Đã gửi đơn Bàn $soBan thành công!", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "Gửi đơn Bàn $soBan thành công!", Toast.LENGTH_SHORT).show()
             cartList.clear()
             btnViewCart.text = "Giỏ hàng (0)"
             alertDialog.dismiss()
@@ -138,6 +167,7 @@ class Order : AppCompatActivity() {
         alertDialog.show()
     }
 
+    // KHÔI PHỤC LOGIC THANH TOÁN
     private fun showPaymentDialog() {
         if (currentTableNumber.isEmpty()) {
             Toast.makeText(this, "Vui lòng chọn bàn trước khi thanh toán!", Toast.LENGTH_LONG).show()
@@ -150,12 +180,13 @@ class Order : AppCompatActivity() {
         val btnTransfer = view.findViewById<Button>(R.id.btnTransfer)
         val btnCash = view.findViewById<Button>(R.id.btnCash)
 
+        val alertDialog = AlertDialog.Builder(this).setView(view).create()
+
         database.getReference("Orders").orderByChild("soBan").equalTo(currentTableNumber)
             .addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     var total = 0L
                     for (ds in snapshot.children) {
-                        // Tính tiền những món chưa thanh toán
                         if (ds.child("isPaid").value != true) {
                             total += ds.child("gia").getValue(Long::class.java) ?: 0L
                         }
@@ -164,22 +195,16 @@ class Order : AppCompatActivity() {
 
                     btnTransfer.setOnClickListener {
                         sendPaymentRequest("Transfer", total)
-                        dismissDialog(view)
+                        alertDialog.dismiss()
                     }
                     btnCash.setOnClickListener {
                         sendPaymentRequest("Cash", total)
-                        dismissDialog(view)
+                        alertDialog.dismiss()
                     }
                 }
                 override fun onCancelled(error: DatabaseError) {}
             })
-
-        AlertDialog.Builder(this).setView(view).show()
-    }
-
-    private fun dismissDialog(view: android.view.View) {
-        val parent = view.parent
-        // Code xử lý đóng dialog
+        alertDialog.show()
     }
 
     private fun sendPaymentRequest(method: String, total: Long) {

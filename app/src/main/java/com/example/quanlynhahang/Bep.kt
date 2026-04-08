@@ -3,6 +3,7 @@ package com.example.quanlynhahang
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.DefaultItemAnimator
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -15,7 +16,8 @@ data class GroupedItem(
     val soLuong: Int,
     val timestamp: Long,
     val snapshots: List<DataSnapshot>,
-    val isPaid: Boolean
+    val isPaid: Boolean,
+    val ghiChu: String
 )
 
 class Bep : AppCompatActivity() {
@@ -56,32 +58,32 @@ class Bep : AppCompatActivity() {
             override fun onDataChange(snapshot: DataSnapshot) {
                 val rawList = mutableListOf<DataSnapshot>()
                 for (ds in snapshot.children) {
-                    val status = ds.child("status").value?.toString() ?: ""
-                    // Bếp chỉ hiện món chờ nấu, không quan tâm việc thanh toán
-                    if (status == "waiting") {
+                    if (ds.child("status").value == "waiting") {
                         rawList.add(ds)
                     }
                 }
 
                 val groups = rawList.groupBy {
-                    val ban = it.child("soBan").value?.toString() ?: "0"
-                    val mon = it.child("tenMon").value?.toString() ?: "NoName"
-                    "${ban}_${mon}"
+                    "${it.child("soBan").value}_${it.child("tenMon").value}"
                 }
 
                 val newList = mutableListOf<GroupedItem>()
                 for ((_, items) in groups) {
                     val first = items[0]
-                    val ban = first.child("soBan").value?.toString() ?: "0"
-                    val paidStatus = items.any { it.child("isPaid").value == true }
+
+                    // Gộp ghi chú từ Firebase
+                    val allNotes = items.mapNotNull { it.child("ghiChu").value?.toString() }
+                        .filter { it.isNotEmpty() && it != "Không có" }
+                        .distinct().joinToString(", ")
 
                     newList.add(GroupedItem(
-                        ban,
-                        first.child("tenMon").value?.toString() ?: "Món không tên",
+                        first.child("soBan").value.toString(),
+                        first.child("tenMon").value.toString(),
                         items.size,
-                        first.child("timestamp").value?.toString()?.toLongOrNull() ?: System.currentTimeMillis(),
+                        first.child("timestamp").value.toString().toLongOrNull() ?: System.currentTimeMillis(),
                         items,
-                        paidStatus
+                        items.any { it.child("isPaid").value == true },
+                        if (allNotes.isEmpty()) "Không có" else allNotes
                     ))
                 }
 
@@ -95,6 +97,30 @@ class Bep : AppCompatActivity() {
     }
 
     private fun xửLyXongMonTaiBep(item: GroupedItem) {
+        val rootRef = FirebaseDatabase.getInstance(DB_URL).reference
+
+        // 1. Logic Trừ Kho
+        rootRef.child("Menu").child(item.tenMon).addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val idKho = snapshot.child("idKho").value?.toString()
+                val dinhMuc = snapshot.child("dinhMuc").value?.toString()?.toDoubleOrNull() ?: 0.0
+
+                if (!idKho.isNullOrEmpty() && dinhMuc > 0) {
+                    val totalSub = item.soLuong * dinhMuc
+                    rootRef.child("Warehouse").child(idKho).runTransaction(object : Transaction.Handler {
+                        override fun doTransaction(data: MutableData): Transaction.Result {
+                            val current = data.getValue(Double::class.java) ?: 0.0
+                            data.value = current - totalSub
+                            return Transaction.success(data)
+                        }
+                        override fun onComplete(e: DatabaseError?, b: Boolean, d: DataSnapshot?) {}
+                    })
+                }
+            }
+            override fun onCancelled(error: DatabaseError) {}
+        })
+
+        // 2. Chuyển trạng thái cooked
         for (ds in item.snapshots) {
             ds.ref.child("status").setValue("cooked")
         }
