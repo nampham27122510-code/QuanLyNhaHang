@@ -3,6 +3,8 @@ package com.example.quanlynhahang
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.view.View
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.DefaultItemAnimator
@@ -10,27 +12,19 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.firebase.database.*
 
-data class GroupedItem(
-    val soBan: String,
-    val tenMon: String,
-    val soLuong: Int,
-    val timestamp: Long,
-    val snapshots: List<DataSnapshot>,
-    val isPaid: Boolean,
-    val ghiChu: String
-)
-
 class Bep : AppCompatActivity() {
     private val DB_URL = "https://hethongnhahang-91d27-default-rtdb.asia-southeast1.firebasedatabase.app"
     private lateinit var database: DatabaseReference
-    private val displayOrders = mutableListOf<GroupedItem>()
+    private val displayOrders = mutableListOf<TableGroup>()
     private lateinit var bepAdapter: BepAdapter
+    private lateinit var tvEmptyKitchen: TextView
 
+    // GIỮ NGUYÊN: Bộ Timer đếm giây chính xác của Nam
     private val timerHandler = Handler(Looper.getMainLooper())
     private val timerRunnable = object : Runnable {
         override fun run() {
             if (::bepAdapter.isInitialized && displayOrders.isNotEmpty()) {
-                bepAdapter.notifyItemRangeChanged(0, displayOrders.size, "UPDATE_TIME")
+                bepAdapter.notifyDataSetChanged()
             }
             timerHandler.postDelayed(this, 1000)
         }
@@ -40,11 +34,12 @@ class Bep : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_bep)
 
+        tvEmptyKitchen = findViewById(R.id.tvEmptyKitchen)
         val rv = findViewById<RecyclerView>(R.id.rvDanhSachMon)
         rv.layoutManager = LinearLayoutManager(this)
         rv.itemAnimator = DefaultItemAnimator()
 
-        bepAdapter = BepAdapter(displayOrders) { item -> xửLyXongMonTaiBep(item) }
+        bepAdapter = BepAdapter(displayOrders) { dishItem -> xửLyXongMonTaiBep(dishItem) }
         rv.adapter = bepAdapter
 
         database = FirebaseDatabase.getInstance(DB_URL).getReference("Orders")
@@ -56,38 +51,39 @@ class Bep : AppCompatActivity() {
     private fun taiDuLieuChoBep() {
         database.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                val rawList = mutableListOf<DataSnapshot>()
+                val tableMap = mutableMapOf<String, MutableList<DataSnapshot>>()
+
                 for (ds in snapshot.children) {
-                    if (ds.child("status").value == "waiting") {
-                        rawList.add(ds)
+                    val status = ds.child("status").value?.toString() ?: ""
+                    if (status == "waiting") {
+                        val soBan = ds.child("soBan").value?.toString() ?: "0"
+                        if (!tableMap.containsKey(soBan)) tableMap[soBan] = mutableListOf()
+                        tableMap[soBan]?.add(ds)
                     }
                 }
 
-                val groups = rawList.groupBy {
-                    "${it.child("soBan").value}_${it.child("tenMon").value}"
-                }
-
-                val newList = mutableListOf<GroupedItem>()
-                for ((_, items) in groups) {
-                    val first = items[0]
-
-                    // Gộp ghi chú từ Firebase
-                    val allNotes = items.mapNotNull { it.child("ghiChu").value?.toString() }
+                val newList = mutableListOf<TableGroup>()
+                for ((soBan, snapshots) in tableMap) {
+                    // Gom tất cả ghi chú của khách tại bàn này
+                    val allNotes = snapshots.mapNotNull { it.child("ghiChu").value?.toString() }
                         .filter { it.isNotEmpty() && it != "Không có" }
                         .distinct().joinToString(", ")
 
-                    newList.add(GroupedItem(
-                        first.child("soBan").value.toString(),
-                        first.child("tenMon").value.toString(),
-                        items.size,
-                        first.child("timestamp").value.toString().toLongOrNull() ?: System.currentTimeMillis(),
-                        items,
-                        items.any { it.child("isPaid").value == true },
-                        if (allNotes.isEmpty()) "Không có" else allNotes
-                    ))
+                    val minTime = snapshots.minOf {
+                        it.child("timestamp").value?.toString()?.toLongOrNull() ?: System.currentTimeMillis()
+                    }
+
+                    // FIX LỖI: Truyền đúng 3 tham số DishItem(id, tenMon, snapshot)
+                    val dishItems = snapshots.map {
+                        DishItem(it.key ?: "", it.child("tenMon").value?.toString() ?: "Món không tên", it)
+                    }.toMutableList()
+
+                    newList.add(TableGroup(soBan, if (allNotes.isEmpty()) "Không có" else allNotes, minTime, dishItems))
                 }
 
                 newList.sortBy { it.timestamp }
+                tvEmptyKitchen.visibility = if (newList.isEmpty()) View.VISIBLE else View.GONE
+
                 displayOrders.clear()
                 displayOrders.addAll(newList)
                 bepAdapter.notifyDataSetChanged()
@@ -96,34 +92,34 @@ class Bep : AppCompatActivity() {
         })
     }
 
-    private fun xửLyXongMonTaiBep(item: GroupedItem) {
+    // GIỮ NGUYÊN: Logic trừ kho bằng Transaction của Nam
+    private fun xửLyXongMonTaiBep(dish: DishItem) {
         val rootRef = FirebaseDatabase.getInstance(DB_URL).reference
 
-        // 1. Logic Trừ Kho
-        rootRef.child("Menu").child(item.tenMon).addListenerForSingleValueEvent(object : ValueEventListener {
+        rootRef.child("Menu").child(dish.tenMon).addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 val idKho = snapshot.child("idKho").value?.toString()
                 val dinhMuc = snapshot.child("dinhMuc").value?.toString()?.toDoubleOrNull() ?: 0.0
 
                 if (!idKho.isNullOrEmpty() && dinhMuc > 0) {
-                    val totalSub = item.soLuong * dinhMuc
                     rootRef.child("Warehouse").child(idKho).runTransaction(object : Transaction.Handler {
-                        override fun doTransaction(data: MutableData): Transaction.Result {
-                            val current = data.getValue(Double::class.java) ?: 0.0
-                            data.value = current - totalSub
-                            return Transaction.success(data)
+                        override fun doTransaction(currentData: MutableData): Transaction.Result {
+                            val currentStock = currentData.getValue(Double::class.java) ?: 0.0
+                            currentData.value = currentStock - dinhMuc
+                            return Transaction.success(currentData)
                         }
-                        override fun onComplete(e: DatabaseError?, b: Boolean, d: DataSnapshot?) {}
+                        override fun onComplete(error: DatabaseError?, b: Boolean, ds: DataSnapshot?) {
+                            if (b) {
+                                runOnUiThread { Toast.makeText(this@Bep, "Đã trừ kho món: ${dish.tenMon}", Toast.LENGTH_SHORT).show() }
+                            }
+                        }
                     })
                 }
             }
             override fun onCancelled(error: DatabaseError) {}
         })
 
-        // 2. Chuyển trạng thái cooked
-        for (ds in item.snapshots) {
-            ds.ref.child("status").setValue("cooked")
-        }
+        database.child(dish.id).child("status").setValue("cooked")
     }
 
     override fun onDestroy() {

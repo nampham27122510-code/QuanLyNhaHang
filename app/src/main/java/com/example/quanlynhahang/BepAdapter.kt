@@ -1,64 +1,60 @@
 package com.example.quanlynhahang
 
-import android.graphics.Color
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.CheckBox
+import android.widget.LinearLayout
 import android.widget.TextView
-import androidx.cardview.widget.CardView
 import androidx.recyclerview.widget.RecyclerView
 
 class BepAdapter(
-    private val list: MutableList<GroupedItem>,
-    private val onDoneClick: (GroupedItem) -> Unit
-) : RecyclerView.Adapter<BepAdapter.ViewHolder>() {
+    private var list: List<TableGroup>,
+    private val onFinishItem: (DishItem) -> Unit
+) : RecyclerView.Adapter<BepAdapter.TableVH>() {
 
-    class ViewHolder(v: View) : RecyclerView.ViewHolder(v) {
-        val card: CardView = v.findViewById(R.id.cardMonAn)
+    class TableVH(v: View) : RecyclerView.ViewHolder(v) {
         val tvBan: TextView = v.findViewById(R.id.tvSoBanBep)
-        val tvMon: TextView = v.findViewById(R.id.tvTenMonBep)
-        val tvSl: TextView = v.findViewById(R.id.tvSoLuongBep)
+        val tvGhiChu: TextView = v.findViewById(R.id.tvGhiChuBan)
+        val layoutItems: LinearLayout = v.findViewById(R.id.layoutContainerMonAn)
         val tvTime: TextView = v.findViewById(R.id.tvThoiGianCho)
     }
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-        val v = LayoutInflater.from(parent.context).inflate(R.layout.item_bep, parent, false)
-        return ViewHolder(v)
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): TableVH {
+        val v = LayoutInflater.from(parent.context).inflate(R.layout.item_ban_bep, parent, false)
+        return TableVH(v)
     }
 
-    override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        val item = list[position]
-        holder.tvBan.text = "BÀN: ${item.soBan}"
-        holder.tvSl.text = "x${item.soLuong}"
-        holder.tvMon.text = item.tenMon
+    override fun onBindViewHolder(holder: TableVH, position: Int) {
+        val table = list[position]
 
-        updateTimeDisplay(holder.tvTime, item.timestamp)
+        holder.tvBan.text = "BÀN: ${table.soBan}"
+        holder.tvGhiChu.text = "Ghi chú: ${table.ghiChu}"
 
-        // Nếu khách đã thanh toán, đổi màu thẻ sang màu vàng nhạt
-        if (item.isPaid) {
-            holder.card.setCardBackgroundColor(Color.parseColor("#FFF9C4"))
-            holder.tvMon.text = "${item.tenMon}\n(ĐÃ THANH TOÁN)"
-        } else {
-            holder.card.setCardBackgroundColor(Color.WHITE)
-        }
-
-        holder.itemView.setOnClickListener { onDoneClick(item) }
-    }
-
-    override fun onBindViewHolder(holder: ViewHolder, position: Int, payloads: MutableList<Any>) {
-        if (payloads.contains("UPDATE_TIME")) {
-            updateTimeDisplay(holder.tvTime, list[position].timestamp)
-        } else {
-            super.onBindViewHolder(holder, position, payloads)
-        }
-    }
-
-    private fun updateTimeDisplay(tv: TextView, timestamp: Long) {
-        val diff = System.currentTimeMillis() - timestamp
-        val minutes = (diff / (1000 * 60)).toInt()
+        // Hiển thị thời gian chờ chi tiết (phút và giây)
+        val diff = System.currentTimeMillis() - table.timestamp
+        val minutes = (diff / 60000).toInt()
         val seconds = ((diff / 1000) % 60).toInt()
-        tv.text = "⏱ ${minutes}p ${seconds}s"
-        if (minutes >= 10) tv.setTextColor(Color.RED) else tv.setTextColor(Color.BLACK)
+        holder.tvTime.text = "⏱ ${minutes}p ${seconds}s"
+
+        holder.layoutItems.removeAllViews()
+
+        table.items.forEach { dish ->
+            val itemView = LayoutInflater.from(holder.itemView.context)
+                .inflate(R.layout.item_dong_mon_an, holder.layoutItems, false)
+
+            val tvName = itemView.findViewById<TextView>(R.id.tvTenMon)
+            val cbDone = itemView.findViewById<CheckBox>(R.id.cbXongMon)
+
+            tvName.text = dish.tenMon
+
+            cbDone.setOnClickListener {
+                itemView.visibility = View.GONE
+                // Gọi logic trừ kho khi nhấn Checkbox
+                onFinishItem(dish)
+            }
+            holder.layoutItems.addView(itemView)
+        }
     }
 
     override fun getItemCount() = list.size

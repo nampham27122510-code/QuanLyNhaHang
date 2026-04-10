@@ -16,6 +16,17 @@
         android:layout_gravity="center"
         android:layout_marginBottom="20dp"/>
 
+    <TextView
+        android:id="@+id/tvEmptyKitchen"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="👨‍🍳 Hiện tại không có món cần nấu"
+        android:gravity="center"
+        android:textSize="18sp"
+        android:textColor="#757575"
+        android:layout_marginTop="50dp"
+        android:visibility="gone" />
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rvDanhSachMon"
         android:layout_width="match_parent"
