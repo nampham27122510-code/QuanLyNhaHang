@@ -35,23 +35,19 @@ class SoDoBan : AppCompatActivity() {
                     val tableId = i.toString()
                     val card = createTableCard(tableId)
 
-                    // 1. Kiểm tra cờ xác nhận thanh toán từ phía nhân viên
+                    // Chỉ xám khi nhân viên đã xác nhận thanh toán
                     val isConfirmedPaid = tableStatusSnap
                         .child("ban_$tableId").value?.toString() == "confirmed_paid"
 
-                    var hasActiveOrder = false // Bàn có khách (bất kể trạng thái món)
-                    var hasCookedDish = false  // Có món đã nấu xong chờ giao (chấm xanh)
-                    val isRequestingPay = paySnap.child("ban_$tableId").exists() // Khách gọi thanh toán (chấm đỏ)
+                    var hasOrder = false  // Còn order trong DB → bàn đỏ
+                    var hasCooked = false // Có món bếp vừa xong → chấm xanh
+                    val isRequestingPay = paySnap.child("ban_$tableId").exists()
 
-                    // 2. Duyệt qua toàn bộ node Orders để xác định trạng thái bàn
                     for (ds in ordersSnap.children) {
                         if (ds.child("soBan").value?.toString() == tableId) {
-                            // CỨ CÒN ORDER LÀ CÒN KHÁCH -> BÀN ĐỎ
-                            hasActiveOrder = true
-
-                            // Nếu có món ở trạng thái "cooked", bật chấm xanh thông báo
+                            hasOrder = true
                             if (ds.child("status").value?.toString() == "cooked") {
-                                hasCookedDish = true
+                                hasCooked = true
                             }
                         }
                     }
@@ -60,31 +56,28 @@ class SoDoBan : AppCompatActivity() {
                     val backgroundColor: Int
 
                     when {
-                        // ƯU TIÊN 1: Nhân viên vừa xác nhận thanh toán thành công -> Xám ngay
+                        // XÁM: nhân viên đã bấm xác nhận thanh toán
                         isConfirmedPaid -> {
                             tableColor = Color.parseColor("#757575")
                             backgroundColor = Color.WHITE
-                            // Reset flag TableStatus để bàn sẵn sàng cho lượt khách tiếp theo
+                            // Reset flag ngay sau khi đã hiển thị xám
                             database.child("TableStatus").child("ban_$tableId").removeValue()
                         }
-
-                        // ƯU TIÊN 2: Bàn có món (dù là đang đợi, đã nấu, hay đã giao) -> GIỮ MÀU ĐỎ
-                        hasActiveOrder -> {
+                        // ĐỎ: còn bất kỳ order nào (waiting / cooked / delivered)
+                        // Giữ đỏ từ lúc khách gọi món đến khi nhân viên thu tiền xong
+                        hasOrder -> {
                             tableColor = Color.RED
                             backgroundColor = Color.parseColor("#FFF0F0")
                         }
-
-                        // ƯU TIÊN 3: Bàn trống hoàn toàn -> MÀU XÁM
+                        // XÁM: bàn trống, chưa có order nào
                         else -> {
                             tableColor = Color.parseColor("#757575")
                             backgroundColor = Color.WHITE
                         }
                     }
 
-                    // Cập nhật giao diện Icon và các chấm thông báo
-                    updateTableUI(card, tableId, tableColor, hasCookedDish, isRequestingPay)
+                    updateTableUI(card, tableId, tableColor, hasCooked, isRequestingPay)
                     card.setCardBackgroundColor(backgroundColor)
-
                     card.setOnClickListener {
                         startActivity(
                             Intent(this@SoDoBan, nhanvien::class.java)

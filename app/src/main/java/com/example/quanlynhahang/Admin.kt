@@ -3,8 +3,8 @@ package com.example.quanlynhahang
 import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
+import android.util.Log
 import android.widget.TextView
-import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.cardview.widget.CardView
@@ -31,7 +31,6 @@ class Admin : AppCompatActivity() {
         setContentView(R.layout.activity_admin)
         database = FirebaseDatabase.getInstance(DB_URL)
 
-        // Ánh xạ ID
         tvTodayRevenue = findViewById(R.id.tvTotalRevenueAdmin)
         barChartTuan = findViewById(R.id.barChartTuan)
         pieChartMonAn = findViewById(R.id.pieChartMonAn)
@@ -39,24 +38,19 @@ class Admin : AppCompatActivity() {
         listenToTodayRevenue()
         setupCharts()
 
-        // Card Doanh thu tháng
         findViewById<CardView>(R.id.cardRevenueThang).setOnClickListener {
             hienThiDoanhThuThang()
         }
 
-        // Card Kho
         findViewById<CardView>(R.id.cardQuanLyKho).setOnClickListener {
             startActivity(Intent(this, Kho::class.java))
         }
 
-        // Card Thực đơn
         findViewById<CardView>(R.id.cardQuanLyMenu).setOnClickListener {
             startActivity(Intent(this, QuanLyMenu::class.java))
         }
 
-        // SỬA TẠI ĐÂY: Card Thực trạng (Thay thế nút Báo cáo cũ)
         findViewById<CardView>(R.id.cardBaoCao).setOnClickListener {
-            // Chuyển hướng sang Activity hiển thị trạng thái bàn có khách
             val intent = Intent(this, ThucTrangNhaHang::class.java)
             startActivity(intent)
         }
@@ -82,17 +76,24 @@ class Admin : AppCompatActivity() {
 
     private fun vePieChartTiLeMonAn() {
         val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
-        database.getReference("Orders").addValueEventListener(object : ValueEventListener {
+
+        // CHỈNH SỬA TẠI ĐÂY: Đọc từ OrderHistory thay vì Orders
+        // Điều này giúp dữ liệu biểu đồ không bị mất sau khi thanh toán bàn
+        database.getReference("OrderHistory").child(today).addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 val counts = mutableMapOf<String, Int>()
+
                 for (ds in snapshot.children) {
-                    val status = ds.child("status").value?.toString() ?: ""
-                    if (status == "delivered" || status == "paid") {
-                        val tenMon = ds.child("tenMon").value?.toString() ?: "Khác"
-                        counts[tenMon] = counts.getOrDefault(tenMon, 0) + 1
-                    }
+                    // Trong lịch sử, chúng ta thống kê tất cả các món đã từng được thanh toán
+                    val tenMon = ds.child("tenMon").value?.toString() ?: "Khác"
+                    counts[tenMon] = counts.getOrDefault(tenMon, 0) + 1
                 }
-                if (counts.isEmpty()) return
+
+                if (counts.isEmpty()) {
+                    pieChartMonAn.clear()
+                    pieChartMonAn.setNoDataText("Chưa có món nào hoàn tất thanh toán hôm nay.")
+                    return
+                }
 
                 val entries = counts.map { PieEntry(it.value.toFloat(), it.key) }
                 val dataSet = PieDataSet(entries, "")
@@ -106,10 +107,10 @@ class Admin : AppCompatActivity() {
                 pieChartMonAn.apply {
                     data = pieData
                     setUsePercentValues(true)
-                    centerText = "Tỉ lệ món\nhôm nay"
+                    centerText = "Tỉ lệ món ăn\nđã bán hôm nay"
                     setCenterTextSize(15f)
                     description.isEnabled = false
-                    animateXY(1000, 1000)
+                    animateXY(800, 800)
                     invalidate()
                 }
             }
@@ -134,6 +135,7 @@ class Admin : AppCompatActivity() {
                     override fun onDataChange(snapshot: DataSnapshot) {
                         val value = snapshot.getValue(Long::class.java) ?: 0L
                         entries.add(BarEntry((6 - i).toFloat(), value.toFloat()))
+
                         if (entries.size == 7) {
                             entries.sortBy { it.x }
                             val dataSet = BarDataSet(entries, "Doanh thu (VNĐ)")
@@ -142,6 +144,7 @@ class Admin : AppCompatActivity() {
                                 data = BarData(dataSet)
                                 xAxis.valueFormatter = IndexAxisValueFormatter(labels)
                                 xAxis.position = com.github.mikephil.charting.components.XAxis.XAxisPosition.BOTTOM
+                                axisLeft.axisMinimum = 0f
                                 animateY(1000)
                                 invalidate()
                             }

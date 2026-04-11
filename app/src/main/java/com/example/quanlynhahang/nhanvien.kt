@@ -1,6 +1,7 @@
 package com.example.quanlynhahang
 
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -41,8 +42,6 @@ class nhanvien : AppCompatActivity() {
         rvMonChoGiao = findViewById(R.id.rvMonChoGiao)
         rvMonChoGiao.layoutManager = LinearLayoutManager(this)
         giaoMonAdapter = GiaoMonAdapter(deliveryList) { snapshot ->
-            // Chỉ đổi status thành delivered, KHÔNG xóa order
-            // Bàn vẫn giữ màu ĐỎ vì order còn trong DB với isPaid = false
             snapshot.ref.child("status").setValue("delivered")
         }
         rvMonChoGiao.adapter = giaoMonAdapter
@@ -66,7 +65,6 @@ class nhanvien : AppCompatActivity() {
                 override fun onDataChange(s: DataSnapshot) {
                     deliveryList.clear()
                     for (ds in s.children) {
-                        // Chỉ hiển thị những món bếp đã nấu xong (cooked) để nhân viên bưng đi
                         if (ds.child("status").value == "cooked") deliveryList.add(ds)
                     }
                     giaoMonAdapter.notifyDataSetChanged()
@@ -80,8 +78,10 @@ class nhanvien : AppCompatActivity() {
         val orderRef = database.getReference("Orders")
         val revenueRef = database.getReference("Revenue").child(today).child("total")
         val notifyRef = database.getReference("Notifications_Pay")
-        // Node mới để đánh dấu bàn đã được xác nhận thanh toán
         val tableStatusRef = database.getReference("TableStatus").child("ban_$table")
+
+        // --- LOGIC MỚI: Sao lưu vào OrderHistory để giữ dữ liệu cho biểu đồ tròn ---
+        val historyRef = database.getReference("OrderHistory").child(today)
 
         orderRef.orderByChild("soBan").equalTo(table)
             .addListenerForSingleValueEvent(object : ValueEventListener {
@@ -92,16 +92,20 @@ class nhanvien : AppCompatActivity() {
                     }
 
                     val deleteUpdates = hashMapOf<String, Any?>()
+
                     for (ds in snapshot.children) {
+                        // 1. Sao lưu từng món vào OrderHistory trước khi xóa
+                        val orderData = ds.value
+                        historyRef.push().setValue(orderData)
+
+                        // 2. Gom ID để xóa khỏi node Orders
                         deleteUpdates[ds.key!!] = null
                     }
 
-                    // Bước 1: Ghi confirmed_paid TRƯỚC
-                    // SoDoBan đọc flag này → hiển thị xám ngay lập tức
-                    // dù Orders chưa kịp xóa trên Firebase
+                    // Bước 1: Ghi confirmed_paid để SoDoBan chuyển xám và tự xóa node
                     tableStatusRef.setValue("confirmed_paid").addOnSuccessListener {
 
-                        // Bước 2: Xóa toàn bộ Orders của bàn này
+                        // Bước 2: Xóa toàn bộ Orders của bàn này (vì đã được lưu vào history ở trên)
                         orderRef.updateChildren(deleteUpdates).addOnSuccessListener {
 
                             // Bước 3: Cộng doanh thu
@@ -112,7 +116,7 @@ class nhanvien : AppCompatActivity() {
                                     return Transaction.success(currentData)
                                 }
                                 override fun onComplete(e: DatabaseError?, b: Boolean, s: DataSnapshot?) {
-                                    // Bước 4: Xóa thông báo yêu cầu thanh toán (chấm đỏ trên bàn)
+                                    // Bước 4: Xóa thông báo yêu cầu thanh toán (chấm đỏ)
                                     notifyRef.child("ban_$table").removeValue()
                                     Toast.makeText(
                                         this@nhanvien,
@@ -125,7 +129,9 @@ class nhanvien : AppCompatActivity() {
                         }
                     }
                 }
-                override fun onCancelled(p0: DatabaseError) {}
+                override fun onCancelled(p0: DatabaseError) {
+                    Log.e("Firebase_Error", "Thanh toán thất bại: ${p0.message}")
+                }
             })
     }
 }
