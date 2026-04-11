@@ -13,7 +13,8 @@ import com.google.firebase.database.*
 class SoDoBan : AppCompatActivity() {
 
     private lateinit var gridSoDoBan: GridLayout
-    private val database = FirebaseDatabase.getInstance().reference
+    private val DB_URL = "https://hethongnhahang-91d27-default-rtdb.asia-southeast1.firebasedatabase.app"
+    private val database by lazy { FirebaseDatabase.getInstance(DB_URL).reference }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -28,28 +29,30 @@ class SoDoBan : AppCompatActivity() {
                 gridSoDoBan.removeAllViews()
                 val ordersSnap = snapshot.child("Orders")
                 val paySnap = snapshot.child("Notifications_Pay")
+                val tableStatusSnap = snapshot.child("TableStatus")
 
                 for (i in 1..30) {
                     val tableId = i.toString()
                     val card = createTableCard(tableId)
 
-                    var hasAnyData = false       // Bàn có đơn nào không?
-                    var hasUnpaidOrder = false   // Có món chưa trả tiền?
-                    var hasActiveOrder = false   // Có món chưa bưng xong?
-                    var hasCooked = false        // Bếp xong (Chấm xanh)
-                    val isRequestingPay = paySnap.child("ban_$tableId").exists()
+                    // 1. Kiểm tra cờ xác nhận thanh toán từ phía nhân viên
+                    val isConfirmedPaid = tableStatusSnap
+                        .child("ban_$tableId").value?.toString() == "confirmed_paid"
 
+                    var hasActiveOrder = false // Bàn có khách (bất kể trạng thái món)
+                    var hasCookedDish = false  // Có món đã nấu xong chờ giao (chấm xanh)
+                    val isRequestingPay = paySnap.child("ban_$tableId").exists() // Khách gọi thanh toán (chấm đỏ)
+
+                    // 2. Duyệt qua toàn bộ node Orders để xác định trạng thái bàn
                     for (ds in ordersSnap.children) {
                         if (ds.child("soBan").value?.toString() == tableId) {
-                            val status = ds.child("status").value?.toString() ?: ""
-                            val isPaid = ds.child("isPaid").value == true
+                            // CỨ CÒN ORDER LÀ CÒN KHÁCH -> BÀN ĐỎ
+                            hasActiveOrder = true
 
-                            if (status != "delivered") {
-                                hasAnyData = true
-                                hasActiveOrder = true
+                            // Nếu có món ở trạng thái "cooked", bật chấm xanh thông báo
+                            if (ds.child("status").value?.toString() == "cooked") {
+                                hasCookedDish = true
                             }
-                            if (!isPaid && status != "delivered") hasUnpaidOrder = true
-                            if (status == "cooked") hasCooked = true
                         }
                     }
 
@@ -57,28 +60,36 @@ class SoDoBan : AppCompatActivity() {
                     val backgroundColor: Int
 
                     when {
-                        !hasAnyData -> {
-                            tableColor = Color.parseColor("#757575") // Xám (Trống)
+                        // ƯU TIÊN 1: Nhân viên vừa xác nhận thanh toán thành công -> Xám ngay
+                        isConfirmedPaid -> {
+                            tableColor = Color.parseColor("#757575")
                             backgroundColor = Color.WHITE
+                            // Reset flag TableStatus để bàn sẵn sàng cho lượt khách tiếp theo
+                            database.child("TableStatus").child("ban_$tableId").removeValue()
                         }
-                        hasUnpaidOrder -> {
-                            tableColor = Color.RED // Đỏ (Chưa thanh toán)
+
+                        // ƯU TIÊN 2: Bàn có món (dù là đang đợi, đã nấu, hay đã giao) -> GIỮ MÀU ĐỎ
+                        hasActiveOrder -> {
+                            tableColor = Color.RED
                             backgroundColor = Color.parseColor("#FFF0F0")
                         }
-                        hasActiveOrder -> {
-                            tableColor = Color.parseColor("#4CAF50") // Xanh lá (Đã trả tiền nhưng chờ đồ)
-                            backgroundColor = Color.parseColor("#E8F5E9")
-                        }
+
+                        // ƯU TIÊN 3: Bàn trống hoàn toàn -> MÀU XÁM
                         else -> {
-                            tableColor = Color.parseColor("#757575") // Xám (Xong hết)
+                            tableColor = Color.parseColor("#757575")
                             backgroundColor = Color.WHITE
                         }
                     }
 
-                    updateTableUI(card, tableId, tableColor, hasCooked, isRequestingPay)
+                    // Cập nhật giao diện Icon và các chấm thông báo
+                    updateTableUI(card, tableId, tableColor, hasCookedDish, isRequestingPay)
                     card.setCardBackgroundColor(backgroundColor)
+
                     card.setOnClickListener {
-                        startActivity(Intent(this@SoDoBan, nhanvien::class.java).putExtra("TABLE_ID", tableId))
+                        startActivity(
+                            Intent(this@SoDoBan, nhanvien::class.java)
+                                .putExtra("TABLE_ID", tableId)
+                        )
                     }
                     gridSoDoBan.addView(card)
                 }
@@ -101,7 +112,9 @@ class SoDoBan : AppCompatActivity() {
         val newId = View.generateViewId()
         imgTable.id = newId
         imgTable.setImageResource(R.drawable.ic_table)
-        imgTable.layoutParams = RelativeLayout.LayoutParams(110, 110).apply { addRule(RelativeLayout.CENTER_IN_PARENT) }
+        imgTable.layoutParams = RelativeLayout.LayoutParams(110, 110).apply {
+            addRule(RelativeLayout.CENTER_IN_PARENT)
+        }
         imgTable.tag = "img_$idTable"
 
         val tv = TextView(this).apply {
@@ -133,7 +146,10 @@ class SoDoBan : AppCompatActivity() {
             visibility = View.INVISIBLE
         }
 
-        layout.addView(imgTable); layout.addView(tv); layout.addView(dotGreen); layout.addView(dotRed)
+        layout.addView(imgTable)
+        layout.addView(tv)
+        layout.addView(dotGreen)
+        layout.addView(dotRed)
         card.addView(layout)
         return card
     }

@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#F5F7FA"
+    android:padding="10dp"
+    tools:context=".ThucTrangNhaHang">
+
+    <TextView
+        android:id="@+id/tvTitleThucTrang"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="THỰC TRẠNG NHÀ HÀNG"
+        android:textSize="22sp"
+        android:textStyle="bold"
+        android:textColor="#1A237E"
+        android:gravity="center"
+        android:layout_marginTop="10dp"
+        android:layout_marginBottom="15dp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_marginBottom="10dp">
+
+        <View
+            android:layout_width="15dp"
+            android:layout_height="15dp"
+            android:background="#FFEBEE"
+            android:backgroundTint="#FF0000"/>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=" Đang có khách"
+            android:textSize="12sp"
+            android:layout_marginEnd="20dp"/>
+
+        <View
+            android:layout_width="15dp"
+            android:layout_height="15dp"
+            android:background="#FFFFFF"
+            android:elevation="1dp"/>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=" Bàn trống"
+            android:textSize="12sp"/>
+    </LinearLayout>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scrollbars="none">
+
+        <GridLayout
+            android:id="@+id/gridThucTrang"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:columnCount="3"
+            android:alignmentMode="alignMargins"
+            android:columnOrderPreserved="false"
+            android:padding="5dp" />
+
+    </ScrollView>
+
+</LinearLayout>

@@ -41,7 +41,8 @@ class nhanvien : AppCompatActivity() {
         rvMonChoGiao = findViewById(R.id.rvMonChoGiao)
         rvMonChoGiao.layoutManager = LinearLayoutManager(this)
         giaoMonAdapter = GiaoMonAdapter(deliveryList) { snapshot ->
-            // Khi giao xong, chuyển status thành delivered để bàn có thể về màu XÁM
+            // Chỉ đổi status thành delivered, KHÔNG xóa order
+            // Bàn vẫn giữ màu ĐỎ vì order còn trong DB với isPaid = false
             snapshot.ref.child("status").setValue("delivered")
         }
         rvMonChoGiao.adapter = giaoMonAdapter
@@ -65,7 +66,7 @@ class nhanvien : AppCompatActivity() {
                 override fun onDataChange(s: DataSnapshot) {
                     deliveryList.clear()
                     for (ds in s.children) {
-                        // Đồng bộ status "cooked" từ bếp
+                        // Chỉ hiển thị những món bếp đã nấu xong (cooked) để nhân viên bưng đi
                         if (ds.child("status").value == "cooked") deliveryList.add(ds)
                     }
                     giaoMonAdapter.notifyDataSetChanged()
@@ -79,33 +80,52 @@ class nhanvien : AppCompatActivity() {
         val orderRef = database.getReference("Orders")
         val revenueRef = database.getReference("Revenue").child(today).child("total")
         val notifyRef = database.getReference("Notifications_Pay")
+        // Node mới để đánh dấu bàn đã được xác nhận thanh toán
+        val tableStatusRef = database.getReference("TableStatus").child("ban_$table")
 
-        orderRef.orderByChild("soBan").equalTo(table).addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                val updates = hashMapOf<String, Any?>()
-                for (ds in snapshot.children) {
-                    // Đánh dấu đã trả tiền nhưng giữ nguyên status để nhân viên bưng nốt đồ
-                    updates["${ds.key}/isPaid"] = true
-                }
+        orderRef.orderByChild("soBan").equalTo(table)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if (!snapshot.exists()) {
+                        Toast.makeText(this@nhanvien, "Không có đơn hàng để thanh toán!", Toast.LENGTH_SHORT).show()
+                        return
+                    }
 
-                if (updates.isEmpty()) return
+                    val deleteUpdates = hashMapOf<String, Any?>()
+                    for (ds in snapshot.children) {
+                        deleteUpdates[ds.key!!] = null
+                    }
 
-                orderRef.updateChildren(updates).addOnSuccessListener {
-                    revenueRef.runTransaction(object : Transaction.Handler {
-                        override fun doTransaction(currentData: MutableData): Transaction.Result {
-                            val current = currentData.getValue(Long::class.java) ?: 0L
-                            currentData.value = current + totalAmount
-                            return Transaction.success(currentData)
+                    // Bước 1: Ghi confirmed_paid TRƯỚC
+                    // SoDoBan đọc flag này → hiển thị xám ngay lập tức
+                    // dù Orders chưa kịp xóa trên Firebase
+                    tableStatusRef.setValue("confirmed_paid").addOnSuccessListener {
+
+                        // Bước 2: Xóa toàn bộ Orders của bàn này
+                        orderRef.updateChildren(deleteUpdates).addOnSuccessListener {
+
+                            // Bước 3: Cộng doanh thu
+                            revenueRef.runTransaction(object : Transaction.Handler {
+                                override fun doTransaction(currentData: MutableData): Transaction.Result {
+                                    val current = currentData.getValue(Long::class.java) ?: 0L
+                                    currentData.value = current + totalAmount
+                                    return Transaction.success(currentData)
+                                }
+                                override fun onComplete(e: DatabaseError?, b: Boolean, s: DataSnapshot?) {
+                                    // Bước 4: Xóa thông báo yêu cầu thanh toán (chấm đỏ trên bàn)
+                                    notifyRef.child("ban_$table").removeValue()
+                                    Toast.makeText(
+                                        this@nhanvien,
+                                        "Thanh toán thành công! Bàn $table đã trống.",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                    finish()
+                                }
+                            })
                         }
-                        override fun onComplete(e: DatabaseError?, b: Boolean, s: DataSnapshot?) {
-                            notifyRef.child("ban_$table").removeValue()
-                            Toast.makeText(this@nhanvien, "Đã thu tiền Bàn $table!", Toast.LENGTH_SHORT).show()
-                            finish()
-                        }
-                    })
+                    }
                 }
-            }
-            override fun onCancelled(p0: DatabaseError) {}
-        })
+                override fun onCancelled(p0: DatabaseError) {}
+            })
     }
 }

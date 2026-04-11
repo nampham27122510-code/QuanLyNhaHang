@@ -12,6 +12,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.QuanLyNhaHang">
         <activity
+            android:name=".ThucTrangNhaHang"
+            android:exported="false" />
+        <activity
             android:name=".SoDoBan"
             android:exported="false" />
         <activity

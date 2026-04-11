@@ -31,7 +31,7 @@ class Admin : AppCompatActivity() {
         setContentView(R.layout.activity_admin)
         database = FirebaseDatabase.getInstance(DB_URL)
 
-        // Ánh xạ ID chuẩn từ activity_admin.xml của Nam
+        // Ánh xạ ID
         tvTodayRevenue = findViewById(R.id.tvTotalRevenueAdmin)
         barChartTuan = findViewById(R.id.barChartTuan)
         pieChartMonAn = findViewById(R.id.pieChartMonAn)
@@ -39,24 +39,26 @@ class Admin : AppCompatActivity() {
         listenToTodayRevenue()
         setupCharts()
 
-        // Card Doanh thu tháng (Hiện thông báo doanh thu gom theo tháng)
+        // Card Doanh thu tháng
         findViewById<CardView>(R.id.cardRevenueThang).setOnClickListener {
             hienThiDoanhThuThang()
         }
 
-        // Card Kho (Mở file Kho.kt)
+        // Card Kho
         findViewById<CardView>(R.id.cardQuanLyKho).setOnClickListener {
             startActivity(Intent(this, Kho::class.java))
         }
 
-        // Card Thực đơn (Mở file QuanLyMenu.kt)
+        // Card Thực đơn
         findViewById<CardView>(R.id.cardQuanLyMenu).setOnClickListener {
             startActivity(Intent(this, QuanLyMenu::class.java))
         }
 
-        // Card Báo cáo (Mở file BaoCao.kt)
+        // SỬA TẠI ĐÂY: Card Thực trạng (Thay thế nút Báo cáo cũ)
         findViewById<CardView>(R.id.cardBaoCao).setOnClickListener {
-            startActivity(Intent(this, BaoCao::class.java))
+            // Chuyển hướng sang Activity hiển thị trạng thái bàn có khách
+            val intent = Intent(this, ThucTrangNhaHang::class.java)
+            startActivity(intent)
         }
     }
 
@@ -85,7 +87,6 @@ class Admin : AppCompatActivity() {
                 val counts = mutableMapOf<String, Int>()
                 for (ds in snapshot.children) {
                     val status = ds.child("status").value?.toString() ?: ""
-                    // Chỉ tính các món đã bưng hoặc đã trả tiền trong ngày hôm nay
                     if (status == "delivered" || status == "paid") {
                         val tenMon = ds.child("tenMon").value?.toString() ?: "Khác"
                         counts[tenMon] = counts.getOrDefault(tenMon, 0) + 1
@@ -101,11 +102,10 @@ class Admin : AppCompatActivity() {
                 dataSet.valueTextColor = Color.WHITE
 
                 val pieData = PieData(dataSet)
-                // Cấu hình hiển thị phần trăm %
                 pieData.setValueFormatter(PercentFormatter(pieChartMonAn))
                 pieChartMonAn.apply {
                     data = pieData
-                    setUsePercentValues(true) // Bật chế độ %
+                    setUsePercentValues(true)
                     centerText = "Tỉ lệ món\nhôm nay"
                     setCenterTextSize(15f)
                     description.isEnabled = false
@@ -118,7 +118,6 @@ class Admin : AppCompatActivity() {
     }
 
     private fun veBarChartDoanhThuTuan() {
-        // Logic vẽ biểu đồ cột 7 ngày gần nhất
         val entries = mutableListOf<BarEntry>()
         val labels = mutableListOf<String>()
         val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
@@ -154,7 +153,6 @@ class Admin : AppCompatActivity() {
     }
 
     private fun hienThiDoanhThuThang() {
-        // Hàm tính toán và hiện thông báo doanh thu tháng
         database.getReference("Revenue").addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 val mapThang = mutableMapOf<String, Long>()
@@ -162,7 +160,7 @@ class Admin : AppCompatActivity() {
                     val ngay = ngayDs.key ?: continue
                     val tienNgay = ngayDs.child("total").getValue(Long::class.java) ?: 0L
                     if (ngay.length >= 7) {
-                        val keyThang = ngay.substring(0, 7) // Lấy yyyy-MM
+                        val keyThang = ngay.substring(0, 7)
                         mapThang[keyThang] = (mapThang[keyThang] ?: 0L) + tienNgay
                     }
                 }

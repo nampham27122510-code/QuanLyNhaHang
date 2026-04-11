@@ -17,7 +17,7 @@
             android:layout_width="match_parent"
             android:layout_height="130dp"
             android:scaleType="centerCrop"
-            android:src="@drawable/pho_bo" />
+            android:src="@drawable/logo" />
 
         <LinearLayout
             android:layout_width="match_parent"

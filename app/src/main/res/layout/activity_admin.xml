@@ -106,10 +106,7 @@
                 android:layout_columnWeight="1"
                 android:layout_margin="5dp"
                 app:cardCornerRadius="10dp">
-                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="15dp" android:gravity="center">
-                    <ImageView android:layout_width="35dp" android:layout_height="35dp" android:src="@drawable/luachon"/>
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Báo cáo" android:textSize="12sp" android:layout_marginTop="5dp"/>
-                </LinearLayout>
+
             </androidx.cardview.widget.CardView>
         </GridLayout>
 
