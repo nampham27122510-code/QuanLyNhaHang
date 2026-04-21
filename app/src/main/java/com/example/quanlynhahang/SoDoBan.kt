@@ -27,22 +27,22 @@ class SoDoBan : AppCompatActivity() {
         database.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 gridSoDoBan.removeAllViews()
+
                 val ordersSnap = snapshot.child("Orders")
                 val paySnap = snapshot.child("Notifications_Pay")
-                val tableStatusSnap = snapshot.child("TableStatus")
+                val tablesStatusSnap = snapshot.child("Tables")
 
                 for (i in 1..30) {
                     val tableId = i.toString()
                     val card = createTableCard(tableId)
 
-                    // Chỉ xám khi nhân viên đã xác nhận thanh toán
-                    val isConfirmedPaid = tableStatusSnap
-                        .child("ban_$tableId").value?.toString() == "confirmed_paid"
+                    // Lấy dữ liệu từ node Tables
+                    val isPaid = tablesStatusSnap.child(tableId).child("isPaid").getValue(Boolean::class.java) ?: false
+                    val allServed = tablesStatusSnap.child(tableId).child("allServed").getValue(Boolean::class.java) ?: false
 
-                    var hasOrder = false  // Còn order trong DB → bàn đỏ
-                    var hasCooked = false // Có món bếp vừa xong → chấm xanh
-                    val isRequestingPay = paySnap.child("ban_$tableId").exists()
-
+                    // Kiểm tra thực tế bàn có đơn hàng đang hoạt động không
+                    var hasOrder = false
+                    var hasCooked = false
                     for (ds in ordersSnap.children) {
                         if (ds.child("soBan").value?.toString() == tableId) {
                             hasOrder = true
@@ -52,24 +52,36 @@ class SoDoBan : AppCompatActivity() {
                         }
                     }
 
+                    val isRequestingPay = paySnap.child("ban_$tableId").exists()
+
                     val tableColor: Int
                     val backgroundColor: Int
 
                     when {
-                        // XÁM: nhân viên đã bấm xác nhận thanh toán
-                        isConfirmedPaid -> {
+                        // 1. TRỐNG: Không có khách (không có Order) -> Màu Xám
+                        !hasOrder -> {
                             tableColor = Color.parseColor("#757575")
                             backgroundColor = Color.WHITE
-                            // Reset flag ngay sau khi đã hiển thị xám
-                            database.child("TableStatus").child("ban_$tableId").removeValue()
                         }
-                        // ĐỎ: còn bất kỳ order nào (waiting / cooked / delivered)
-                        // Giữ đỏ từ lúc khách gọi món đến khi nhân viên thu tiền xong
-                        hasOrder -> {
+
+                        // 2. KẾT THÚC: Đã thanh toán Xong VÀ Bếp đã báo xong hết món -> Màu Xám
+                        isPaid && allServed -> {
+                            tableColor = Color.parseColor("#757575")
+                            backgroundColor = Color.WHITE
+                        }
+
+                        // 3. ĐÃ THANH TOÁN NHƯNG CHƯA XONG MÓN: Hiện màu XANH
+                        isPaid && !allServed -> {
+                            tableColor = Color.GREEN
+                            backgroundColor = Color.parseColor("#E8F5E9")
+                        }
+
+                        // 4. CÓ KHÁCH & CHƯA THANH TOÁN: Luôn hiện màu ĐỎ
+                        !isPaid -> {
                             tableColor = Color.RED
                             backgroundColor = Color.parseColor("#FFF0F0")
                         }
-                        // XÁM: bàn trống, chưa có order nào
+
                         else -> {
                             tableColor = Color.parseColor("#757575")
                             backgroundColor = Color.WHITE
@@ -78,6 +90,7 @@ class SoDoBan : AppCompatActivity() {
 
                     updateTableUI(card, tableId, tableColor, hasCooked, isRequestingPay)
                     card.setCardBackgroundColor(backgroundColor)
+
                     card.setOnClickListener {
                         startActivity(
                             Intent(this@SoDoBan, nhanvien::class.java)

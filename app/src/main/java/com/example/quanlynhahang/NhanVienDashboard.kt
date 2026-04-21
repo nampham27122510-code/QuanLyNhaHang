@@ -40,41 +40,60 @@ class NhanVienDashboard : AppCompatActivity() {
         val dotPay = card.findViewWithTag<View>("dotPay_$tableId")
         val dotDone = card.findViewWithTag<View>("dotDone_$tableId")
 
-        database.getReference("Orders").addValueEventListener(object : ValueEventListener {
+        database.reference.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                var hasUnpaid = false
-                var hasWaitingFood = false
-                var hasCookedItem = false
+                val ordersSnap = snapshot.child("Orders")
+                val tablesSnap = snapshot.child("Tables").child(tableId.toString())
 
-                for (ds in snapshot.children) {
+                // 1. Đọc trạng thái chốt chặn từ node Tables
+                val isPaid = tablesSnap.child("isPaid").getValue(Boolean::class.java) ?: false
+                val allServed = tablesSnap.child("allServed").getValue(Boolean::class.java) ?: false
+
+                // 2. Kiểm tra thực tế bàn có món ăn đang hoạt động (Orders) không
+                var hasOrder = false
+                var hasCookedItem = false
+                for (ds in ordersSnap.children) {
                     val b = ds.child("soBan").value?.toString() ?: ""
                     if (b == tableId.toString()) {
-                        val status = ds.child("status").value?.toString() ?: ""
-                        val isPaid = ds.child("isPaid").value == true
-
-                        if (status != "delivered") {
-                            if (!isPaid) hasUnpaid = true
-                            else hasWaitingFood = true
-
-                            if (status == "cooked") hasCookedItem = true
+                        hasOrder = true // Xác nhận bàn đang có khách ngồi
+                        if (ds.child("status").value?.toString() == "cooked") {
+                            hasCookedItem = true
                         }
                     }
                 }
 
+                // 3. LOGIC KẾT HỢP ĐIỀU KIỆN ĐỂ ĐỔI MÀU (ƯU TIÊN KIỂM TRA hasOrder)
                 when {
-                    hasUnpaid -> {
+                    // MẶC ĐỊNH/TRỐNG: Nếu không tìm thấy món nào của bàn này trong Orders -> Màu Xám
+                    !hasOrder -> {
+                        card.setCardBackgroundColor(Color.WHITE)
+                        imgTable.setColorFilter(Color.parseColor("#757575"))
+                    }
+
+                    // XÁM (Dọn bàn): Đã thanh toán Xong VÀ bếp đã báo xong hết món
+                    isPaid && allServed -> {
+                        card.setCardBackgroundColor(Color.WHITE)
+                        imgTable.setColorFilter(Color.parseColor("#757575"))
+                    }
+
+                    // ĐỎ: Có Order nhưng chưa thanh toán (Ưu tiên nhắc thu tiền)
+                    !isPaid -> {
                         card.setCardBackgroundColor(Color.parseColor("#FFEBEE"))
                         imgTable.setColorFilter(Color.RED)
                     }
-                    hasWaitingFood -> {
+
+                    // XANH: Đã thanh toán nhưng bếp vẫn đang làm món cuối
+                    isPaid && !allServed -> {
                         card.setCardBackgroundColor(Color.parseColor("#E8F5E9"))
                         imgTable.setColorFilter(Color.parseColor("#4CAF50"))
                     }
+
                     else -> {
                         card.setCardBackgroundColor(Color.WHITE)
                         imgTable.setColorFilter(Color.parseColor("#757575"))
                     }
                 }
+
                 dotDone.visibility = if (hasCookedItem) View.VISIBLE else View.INVISIBLE
             }
             override fun onCancelled(e: DatabaseError) {}
@@ -103,10 +122,9 @@ class NhanVienDashboard : AppCompatActivity() {
         val layout = RelativeLayout(this)
         layout.setPadding(10, 30, 10, 30)
 
-        // FIX LỖI Val cannot be reassigned TẠI ĐÂY
         val imgTable = ImageView(this)
         val viewId = View.generateViewId()
-        imgTable.id = viewId // Gán ID đúng cách
+        imgTable.id = viewId
         imgTable.setImageResource(R.drawable.ic_table)
         imgTable.tag = "img_$id"
         val imgParams = RelativeLayout.LayoutParams(120, 120)

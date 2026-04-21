@@ -76,7 +76,6 @@ class Order : AppCompatActivity() {
         }
     }
 
-    // HIỂN THỊ GIỎ HÀNG VÀ XÓA MÓN (KHÔNG CHỒNG CỬA SỔ)
     private fun showCartDetailDialog() {
         val builder = AlertDialog.Builder(this)
         builder.setTitle("Giỏ hàng (Chạm để xóa)")
@@ -109,7 +108,6 @@ class Order : AppCompatActivity() {
         alertDialog.show()
     }
 
-    // NHẬP THÔNG TIN VÀ GỬI ĐƠN
     private fun showUserInfoDialog() {
         val view = LayoutInflater.from(this).inflate(R.layout.activity_dialog_user_info, null)
         val edtTen = view.findViewById<EditText>(R.id.edtTenKhach)
@@ -129,12 +127,28 @@ class Order : AppCompatActivity() {
 
         val alertDialog = AlertDialog.Builder(this).setView(view).create()
 
-        // Tính năng Reset hệ thống (Nhấn giữ)
+        // TÍNH NĂNG DỌN BÀN (NHẤN GIỮ): Xóa sạch dữ liệu để bàn về màu Xám hoàn toàn
         btnGuiDon.setOnLongClickListener {
+            val soBanStr = spnSoBan.selectedItem.toString().replace("Bàn ", "")
             val dbReset = FirebaseDatabase.getInstance(DB_URL).reference
-            dbReset.child("Orders").removeValue()
-            dbReset.child("Notifications_Pay").removeValue()
-            Toast.makeText(this, "♻️ HỆ THỐNG ĐÃ RESET!", Toast.LENGTH_SHORT).show()
+
+            // Xóa Orders của bàn này
+            dbReset.child("Orders").orderByChild("soBan").equalTo(soBanStr)
+                .addListenerForSingleValueEvent(object : ValueEventListener {
+                    override fun onDataChange(s: DataSnapshot) {
+                        for (ds in s.children) ds.ref.removeValue()
+                    }
+                    override fun onCancelled(e: DatabaseError) {}
+                })
+
+            dbReset.child("Notifications_Pay").child("ban_$soBanStr").removeValue()
+
+            // Reset trạng thái bàn để Sơ đồ bàn về màu Xám
+            val tableRef = dbReset.child("Tables").child(soBanStr)
+            tableRef.child("isPaid").setValue(true)
+            tableRef.child("allServed").setValue(true)
+
+            Toast.makeText(this, "♻️ Đã dọn trống bàn $soBanStr!", Toast.LENGTH_SHORT).show()
             alertDialog.dismiss()
             true
         }
@@ -145,6 +159,12 @@ class Order : AppCompatActivity() {
             val note = edtGhiChu.text.toString().trim().ifEmpty { "Không có" }
 
             val orderRef = database.getReference("Orders")
+            val tableRef = database.getReference("Tables").child(soBan)
+
+            // Khi có khách mới gọi món: Đặt bàn về màu ĐỎ
+            tableRef.child("isPaid").setValue(false)
+            tableRef.child("allServed").setValue(false)
+
             for (snapshot in cartList) {
                 val data = HashMap<String, Any>()
                 data["tenKhach"] = edtTen.text.toString().ifEmpty { "Khách" }
@@ -154,7 +174,7 @@ class Order : AppCompatActivity() {
                 data["tenMon"] = snapshot.key.toString()
                 data["gia"] = snapshot.child("gia").value.toString().toLongOrNull() ?: 0L
                 data["status"] = "waiting"
-                data["isPaid"] = false
+                data["isPaid"] = false // Món ăn mới chưa thanh toán
                 data["timestamp"] = ServerValue.TIMESTAMP
                 orderRef.push().setValue(data)
             }
@@ -167,7 +187,6 @@ class Order : AppCompatActivity() {
         alertDialog.show()
     }
 
-    // KHÔI PHỤC LOGIC THANH TOÁN
     private fun showPaymentDialog() {
         if (currentTableNumber.isEmpty()) {
             Toast.makeText(this, "Vui lòng chọn bàn trước khi thanh toán!", Toast.LENGTH_LONG).show()
@@ -187,6 +206,7 @@ class Order : AppCompatActivity() {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     var total = 0L
                     for (ds in snapshot.children) {
+                        // Tính tổng các món chưa thanh toán
                         if (ds.child("isPaid").value != true) {
                             total += ds.child("gia").getValue(Long::class.java) ?: 0L
                         }

@@ -42,6 +42,7 @@ class nhanvien : AppCompatActivity() {
         rvMonChoGiao = findViewById(R.id.rvMonChoGiao)
         rvMonChoGiao.layoutManager = LinearLayoutManager(this)
         giaoMonAdapter = GiaoMonAdapter(deliveryList) { snapshot ->
+            // Khi giao món: Chỉ cập nhật trạng thái đã giao
             snapshot.ref.child("status").setValue("delivered")
         }
         rvMonChoGiao.adapter = giaoMonAdapter
@@ -65,6 +66,7 @@ class nhanvien : AppCompatActivity() {
                 override fun onDataChange(s: DataSnapshot) {
                     deliveryList.clear()
                     for (ds in s.children) {
+                        // Chỉ hiện món Bếp đã nấu xong (cooked) để đi giao
                         if (ds.child("status").value == "cooked") deliveryList.add(ds)
                     }
                     giaoMonAdapter.notifyDataSetChanged()
@@ -78,59 +80,54 @@ class nhanvien : AppCompatActivity() {
         val orderRef = database.getReference("Orders")
         val revenueRef = database.getReference("Revenue").child(today).child("total")
         val notifyRef = database.getReference("Notifications_Pay")
-        val tableStatusRef = database.getReference("TableStatus").child("ban_$table")
-
-        // --- LOGIC MỚI: Sao lưu vào OrderHistory để giữ dữ liệu cho biểu đồ tròn ---
-        val historyRef = database.getReference("OrderHistory").child(today)
+        val tableRef = database.getReference("Tables").child(table)
 
         orderRef.orderByChild("soBan").equalTo(table)
             .addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     if (!snapshot.exists()) {
-                        Toast.makeText(this@nhanvien, "Không có đơn hàng để thanh toán!", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@nhanvien, "Không tìm thấy đơn hàng!", Toast.LENGTH_SHORT).show()
                         return
                     }
 
-                    val deleteUpdates = hashMapOf<String, Any?>()
-
+                    // CHỈNH SỬA QUAN TRỌNG: Không xóa (null), chỉ cập nhật isPaid = true
+                    val updates = hashMapOf<String, Any?>()
                     for (ds in snapshot.children) {
-                        // 1. Sao lưu từng món vào OrderHistory trước khi xóa
-                        val orderData = ds.value
-                        historyRef.push().setValue(orderData)
-
-                        // 2. Gom ID để xóa khỏi node Orders
-                        deleteUpdates[ds.key!!] = null
+                        val key = ds.key ?: continue
+                        // Đánh dấu từng món ăn là đã thanh toán
+                        updates["$key/isPaid"] = true
                     }
 
-                    // Bước 1: Ghi confirmed_paid để SoDoBan chuyển xám và tự xóa node
-                    tableStatusRef.setValue("confirmed_paid").addOnSuccessListener {
+                    orderRef.updateChildren(updates).addOnSuccessListener {
 
-                        // Bước 2: Xóa toàn bộ Orders của bàn này (vì đã được lưu vào history ở trên)
-                        orderRef.updateChildren(deleteUpdates).addOnSuccessListener {
+                        // 1. Cập nhật trạng thái bàn sang "Đã trả tiền" để đổi màu sơ đồ
+                        tableRef.child("isPaid").setValue(true)
 
-                            // Bước 3: Cộng doanh thu
-                            revenueRef.runTransaction(object : Transaction.Handler {
-                                override fun doTransaction(currentData: MutableData): Transaction.Result {
-                                    val current = currentData.getValue(Long::class.java) ?: 0L
-                                    currentData.value = current + totalAmount
-                                    return Transaction.success(currentData)
-                                }
-                                override fun onComplete(e: DatabaseError?, b: Boolean, s: DataSnapshot?) {
-                                    // Bước 4: Xóa thông báo yêu cầu thanh toán (chấm đỏ)
-                                    notifyRef.child("ban_$table").removeValue()
-                                    Toast.makeText(
-                                        this@nhanvien,
-                                        "Thanh toán thành công! Bàn $table đã trống.",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-                                    finish()
-                                }
-                            })
-                        }
+                        // 2. Cộng tiền vào doanh thu
+                        revenueRef.runTransaction(object : Transaction.Handler {
+                            override fun doTransaction(currentData: MutableData): Transaction.Result {
+                                val current = currentData.getValue(Long::class.java) ?: 0L
+                                currentData.value = current + totalAmount
+                                return Transaction.success(currentData)
+                            }
+
+                            override fun onComplete(e: DatabaseError?, b: Boolean, s: DataSnapshot?) {
+                                // 3. Xóa thông báo yêu cầu thanh toán
+                                notifyRef.child("ban_$table").removeValue()
+
+                                Toast.makeText(
+                                    this@nhanvien,
+                                    "Đã thu tiền bàn $table thành công. Món ăn vẫn được giữ để phục vụ.",
+                                    Toast.LENGTH_LONG
+                                ).show()
+
+                                finish()
+                            }
+                        })
                     }
                 }
                 override fun onCancelled(p0: DatabaseError) {
-                    Log.e("Firebase_Error", "Thanh toán thất bại: ${p0.message}")
+                    Log.e("Firebase_Error", p0.message)
                 }
             })
     }
